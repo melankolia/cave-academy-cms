@@ -15,12 +15,19 @@
   } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import * as zod from "zod";
+
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
   import List from "@editorjs/list";
   import SimpleImage from "@editorjs/simple-image";
   import Paragraph from "@editorjs/paragraph";
   import ImageTool from "@editorjs/image";
+  import CodeTool from "@editorjs/code";
+  import Underline from "@editorjs/underline";
+  import LinkTool from "@editorjs/link";
+  import RawTool from "@editorjs/raw";
+  import Embed from "@editorjs/embed";
+  import Quote from "@editorjs/quote";
 
   const courseData = ref({
     title: "",
@@ -60,14 +67,7 @@
       autofocus: true,
       tools: {
         // Add your tools configuration here
-        header: {
-          class: Header,
-          config: {
-            placeholder: "Enter a header",
-            levels: [2, 3, 4],
-            defaultLevel: 3,
-          },
-        },
+        header: Header,
         list: List,
         image: SimpleImage,
         paragraph: {
@@ -83,6 +83,17 @@
             },
           },
         },
+        code: CodeTool,
+        underline: Underline,
+        linkTool: {
+          class: LinkTool,
+          config: {
+            endpoint: "http://localhost:8008/fetchUrl", // Your backend endpoint for url data fetching,
+          },
+        },
+        raw: RawTool,
+        embed: Embed,
+        quote: Quote,
       },
       data: courseData.value.content
         ? JSON.parse(courseData.value.content)
