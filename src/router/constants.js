@@ -45,4 +45,11 @@ export const NEWS = {
   DETAIL: "news.detail",
 };
 
+export const COURSE = {
+  LIST: "course.list",
+  CREATE: "course.create",
+  UPDATE: "course.update",
+  DETAIL: "course.detail",
+};
+
 export const LOGIN = "login";

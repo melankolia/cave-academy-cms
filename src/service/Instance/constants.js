@@ -16,3 +16,5 @@ export const IMAGE_UPLOAD = `${API_VERSION}/order/visitation/upload`;
 export const VISITATION = `${API_VERSION}/order/visitation`;
 export const VISITATION_SALES_SEARCH = `${API_VERSION}/user/sales`;
 export const VISITATION_STORES_SEARCH = `${API_VERSION}/store`;
+
+export const COURSE = `${API_VERSION}/course`;

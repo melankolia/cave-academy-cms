@@ -35,6 +35,11 @@
           icon: "pi pi-fw pi-map-marker",
           to: "/visitation",
         },
+        {
+          label: "Course",
+          icon: "pi pi-fw pi-book",
+          to: "/course",
+        },
         // { label: "Boards", icon: "pi pi-fw pi-sitemap", to: "/board" },
         // { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
       ],

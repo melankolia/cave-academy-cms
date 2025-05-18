@@ -10,6 +10,7 @@ import {
   PRODUCT,
   PRODUCT_STOCK,
   VISITATION,
+  COURSE,
 } from "./constants";
 import { roleGuard } from "./guards";
 import { ADMIN } from "./roles";
@@ -106,6 +107,31 @@ const router = createRouter({
               name: VISITATION.DETAIL,
               component: () => import("@/views/pages/visitation/detail.vue"),
               beforeEnter: roleGuard([ADMIN]),
+            },
+          ],
+        },
+        {
+          path: "/course",
+          children: [
+            {
+              path: "",
+              name: COURSE.LIST,
+              component: () => import("@/views/pages/course/index.vue"),
+            },
+            {
+              path: "create",
+              name: COURSE.CREATE,
+              component: () => import("@/views/pages/course/create.vue"),
+            },
+            {
+              path: "update/:secureId",
+              name: COURSE.UPDATE,
+              component: () => import("@/views/pages/course/create.vue"),
+            },
+            {
+              path: ":secureId",
+              name: COURSE.DETAIL,
+              component: () => import("@/views/pages/course/detail.vue"),
             },
           ],
         },
