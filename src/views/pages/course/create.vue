@@ -1,5 +1,6 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
+  import CardCourse from "@/components/Card/CardCourse.vue";
   import { COURSE } from "@/router/constants";
   import CourseService from "@/service/CourseService";
   import { toTypedSchema } from "@vee-validate/zod";
@@ -15,7 +16,6 @@
   } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import * as zod from "zod";
-  import Tag from "primevue/tag";
 
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
@@ -158,6 +158,14 @@
     });
   };
 
+  const saveData = async () => {
+    const data = {
+      ...courseData.value,
+      content: contentCovered.value,
+    };
+    console.log(data);
+  };
+
   const contentCovered = ref([
     {
       level: 1,
@@ -205,46 +213,44 @@
     {
       level: 2,
       title: "Introducing Midjourney",
-      is_locked: true,
-      sub_contents: [
-        {
-          number: "01",
-          title: "Understanding Digi-Doubles",
-          description:
-            "Learn what Digi-Doubles are and their significance in modern VFX.",
-          is_open: false,
-          courses: [
-            {
-              title: "Understanding Digi-Doubles",
-              description:
-                "Learn what Digi-Doubles are and their significance in modern VFX.",
-              is_checked: true,
-            },
-          ],
-        },
-      ],
+      image: "https://picsum.photos/160/90",
+      description: "Learn how to use Midjourney to create stunning visuals.",
+      linked_course: "url/link/to/course",
+      date: ["01/01/2024", "01/02/2024"],
     },
   ]);
 
   const dialogVisible = ref(false);
   const dialogData = ref({}); // for add/edit
-  const dialogMode = ref("add"); // or "edit"
+  const dialogMode = ref("add-level"); // or "edit"
+
+  const addLevelMode = computed(() => {
+    return dialogMode.value === "add-level";
+  });
+
+  const addCourseMode = computed(() => {
+    return dialogMode.value === "add-course";
+  });
+
+  const addSubContentMode = computed(() => {
+    return dialogMode.value === "add-sub-content";
+  });
+
+  const editCourseMode = computed(() => {
+    return dialogMode.value === "edit-course";
+  });
+
+  const editSubContentMode = computed(() => {
+    return dialogMode.value === "edit-sub-content";
+  });
 
   function addLevel() {
-    dialogMode.value = "add";
-    dialogData.value = {
-      level: contentCovered.value.length + 1,
-      title: "",
-      description: "",
-      videoUrl: "",
-      isVideo: false,
-      sub_contents: [],
-    };
+    dialogMode.value = "add-level";
     dialogVisible.value = true;
   }
 
   function addSubContent(levelIndex) {
-    dialogMode.value = "add";
+    dialogMode.value = "add-sub-content";
     dialogData.value = {
       number: String(
         contentCovered.value[levelIndex].sub_contents.length + 1
@@ -259,7 +265,7 @@
   }
 
   function addCourse(levelIndex, subContentIndex) {
-    dialogMode.value = "add";
+    dialogMode.value = "add-course";
     dialogData.value = {
       courses: [
         {
@@ -275,13 +281,14 @@
   }
 
   function editCourse(levelIndex, subContentIndex, courseIndex) {
-    dialogMode.value = "edit";
+    dialogMode.value = "edit-course";
     const course =
       contentCovered.value[levelIndex].sub_contents[subContentIndex].courses[
         courseIndex
       ];
     dialogData.value = {
-      courses: [{ ...course }],
+      title: course.title,
+      description: course.description,
       levelIndex,
       subContentIndex,
       courseIndex,
@@ -296,7 +303,7 @@
   }
 
   function editSubContent(levelIndex, subContentIndex) {
-    dialogMode.value = "edit";
+    dialogMode.value = "edit-sub-content";
     const subContent =
       contentCovered.value[levelIndex].sub_contents[subContentIndex];
     dialogData.value = {
@@ -310,58 +317,56 @@
   }
 
   function saveDialog() {
-    if (dialogMode.value === "add") {
-      if (dialogData.value.level !== undefined) {
-        // Add level/course
-        contentCovered.value.push({
-          level: dialogData.value.level,
-          title: dialogData.value.title,
-          description: dialogData.value.description || "",
-          videoUrl: dialogData.value.videoUrl || "",
-          isVideo: dialogData.value.isVideo || false,
-          sub_contents: [],
-        });
-      } else if (dialogData.value.number !== undefined) {
-        // Add sub-content
-        contentCovered.value[dialogData.value.levelIndex].sub_contents.push({
-          number: dialogData.value.number,
-          title: dialogData.value.title,
-          description: dialogData.value.description,
-          is_open: false,
-          courses: [],
-        });
-      }
-    } else if (dialogMode.value === "edit") {
-      if (dialogData.value.level !== undefined) {
-        // Edit level/course
-        const level = contentCovered.value[dialogData.value.levelIndex];
-        level.title = dialogData.value.title;
-        level.description = dialogData.value.description;
-        level.videoUrl = dialogData.value.videoUrl;
-        level.isVideo = dialogData.value.isVideo;
-      } else if (dialogData.value.number !== undefined) {
-        // Edit sub-content
-        const { levelIndex, subContentIndex, title, description } =
-          dialogData.value;
-        const subContent =
-          contentCovered.value[levelIndex].sub_contents[subContentIndex];
-        subContent.title = title;
-        subContent.description = description;
-      }
+    if (addCourseMode.value) {
+      // Add course
+      contentCovered.value[dialogData.value.levelIndex].sub_contents[
+        dialogData.value.subContentIndex
+      ].courses.push({
+        title: dialogData.value.title,
+        description: dialogData.value.description,
+        is_checked: false,
+      });
+    } else if (addSubContentMode.value) {
+      // Add sub-content
+      contentCovered.value[dialogData.value.levelIndex].sub_contents.push({
+        number: dialogData.value.number,
+        title: dialogData.value.title,
+        description: dialogData.value.description,
+        is_open: false,
+        courses: [],
+      });
+    } else if (editCourseMode.value) {
+      // Edit course
+      const { levelIndex, subContentIndex, courseIndex, title, description } =
+        dialogData.value;
+      const course =
+        contentCovered.value[levelIndex].sub_contents[subContentIndex].courses[
+          courseIndex
+        ];
+      course.title = title;
+      course.description = description;
+    } else if (editSubContentMode.value) {
+      // Edit sub-content
+      const { levelIndex, subContentIndex, title, description } =
+        dialogData.value;
+      const subContent =
+        contentCovered.value[levelIndex].sub_contents[subContentIndex];
+      subContent.title = title;
+      subContent.description = description;
     }
     dialogVisible.value = false;
   }
 
-  const addNewCourse = () => {
-    dialogData.value.courses.push({
-      title: "",
-      description: "",
-      is_checked: false,
-    });
-  };
+  const handleSelectedCourses = (courses) => {
+    courses = {
+      ...courses,
+      level: contentCovered.value.length + 1,
+      linked_course: "url/link/to/course/" + courses.id,
+    };
 
-  const removeCourse = (index) => {
-    dialogData.value.courses.splice(index, 1);
+    contentCovered.value.push(courses);
+    dialogMode.value = "add-course";
+    dialogVisible.value = false;
   };
 
   const deleteDialog = ref(false);
@@ -432,10 +437,11 @@
   function showLevelMenu(event, levelIndex) {
     levelMenuItems.value = [
       {
-        label: "Edit Course",
-        icon: "pi pi-pencil",
+        label: "Delete Course",
+        icon: "pi pi-trash",
+        class: "text-red-500",
         command: () => {
-          editLevel(levelIndex);
+          deleteLevel(levelIndex);
         },
       },
     ];
@@ -488,6 +494,20 @@
     ];
     courseMenu.value.toggle(event);
   }
+
+  const handleDialogHeader = computed(() => {
+    if (addLevelMode.value) {
+      return "Add Level";
+    } else if (addCourseMode.value) {
+      return "Add Course";
+    } else if (addSubContentMode.value) {
+      return "Add Sub-Content";
+    } else if (editCourseMode.value) {
+      return "Edit Course";
+    } else if (editSubContentMode.value) {
+      return "Edit Sub-Content";
+    }
+  });
 </script>
 
 <template>
@@ -522,6 +542,14 @@
         label="Description"
         :values="courseData.description"
       />
+      <div class="flex flex-col gap-4 w-full">
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="videoUrl"
+          label="Video URL"
+          :values="courseData.videoUrl"
+        />
+      </div>
       <div class="grid grid-cols-12 gap-4">
         <div class="flex flex-col col-span-6 gap-2">
           <label for="courseLevel">Level</label>
@@ -566,72 +594,87 @@
           <template #header>
             <div class="flex items-center justify-between w-full">
               <span>Level {{ level.level }}: {{ level.title }}</span>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 p-1">
                 <Button
+                  v-if="level.linked_course"
                   icon="pi pi-ellipsis-v"
                   text
                   size="small"
                   @click.stop="showLevelMenu($event, lIdx)"
                 />
+                <Chip
+                  v-else
+                  label="Current Course"
+                  class="p-chip-success mr-3"
+                />
               </div>
             </div>
           </template>
 
-          <div
-            v-for="(subContent, sIdx) in level.sub_contents"
-            :key="sIdx"
-            class="mb-4"
-          >
-            <Panel
-              :header="subContent.number + '. ' + subContent.title"
-              toggleable
+          <!-- If the level is linked to a course -->
+          <template v-if="level.linked_course">
+            <CardCourse :item="level" />
+          </template>
+
+          <template v-else>
+            <div
+              v-for="(subContent, sIdx) in level.sub_contents"
+              :key="sIdx"
+              class="mb-4"
             >
-              <template #icons>
-                <Button
-                  icon="pi pi-ellipsis-v"
-                  text
-                  size="small"
-                  @click.stop="showMenu($event, lIdx, sIdx)"
-                />
-              </template>
-              <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
-              <ul class="pl-4">
-                <li
-                  v-for="(course, courseIdx) in subContent.courses"
-                  :key="courseIdx"
-                  class="flex items-center gap-2 mb-2"
-                >
-                  <div class="flex-1">
-                    <div class="font-medium">{{ course.title }}</div>
-                    <div class="text-sm text-gray-600">
-                      {{ course.description }}
-                    </div>
-                  </div>
+              <Panel
+                :header="subContent.number + '. ' + subContent.title"
+                toggleable
+              >
+                <template #icons>
                   <Button
                     icon="pi pi-ellipsis-v"
                     text
                     size="small"
-                    @click.stop="showCourseMenu($event, lIdx, sIdx, courseIdx)"
+                    @click.stop="showMenu($event, lIdx, sIdx)"
                   />
-                </li>
-              </ul>
-              <Button
-                label="Add Course"
-                icon="pi pi-plus"
-                text
-                size="small"
-                @click="addCourse(lIdx, sIdx)"
-              />
-            </Panel>
-          </div>
-          <Button
-            label="Add Sub-Content"
-            icon="pi pi-plus"
-            text
-            size="small"
-            @click="addSubContent(lIdx)"
-            class="mt-2"
-          />
+                </template>
+                <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
+                <ul class="pl-4">
+                  <li
+                    v-for="(course, courseIdx) in subContent.courses"
+                    :key="courseIdx"
+                    class="flex items-center gap-2 mb-2"
+                  >
+                    <div class="flex-1">
+                      <div class="font-medium">{{ course.title }}</div>
+                      <div class="text-sm text-gray-600">
+                        {{ course.description }}
+                      </div>
+                    </div>
+                    <Button
+                      icon="pi pi-ellipsis-v"
+                      text
+                      size="small"
+                      @click.stop="
+                        showCourseMenu($event, lIdx, sIdx, courseIdx)
+                      "
+                    />
+                  </li>
+                </ul>
+                <Button
+                  label="Add Course"
+                  icon="pi pi-plus"
+                  text
+                  size="small"
+                  @click="addCourse(lIdx, sIdx)"
+                />
+              </Panel>
+            </div>
+            <Button
+              label="Add Sub-Content"
+              icon="pi pi-plus"
+              text
+              size="small"
+              @click="addSubContent(lIdx)"
+              class="mt-2"
+            />
+          </template>
         </AccordionTab>
       </Accordion>
       <Button
@@ -668,24 +711,20 @@
   <!-- Dialog for Add/Edit -->
   <Dialog
     v-model:visible="dialogVisible"
-    :header="dialogMode === 'add' ? 'Add Course' : 'Edit Course'"
+    :header="handleDialogHeader"
     modal
     :style="{ width: '640px' }"
   >
     <!-- Form Section -->
     <div class="flex flex-col gap-4">
-      <!-- For Level/Course -->
-      <template v-if="dialogData.level !== undefined">
+      <!-- For Level -->
+      <template v-if="addLevelMode">
+        <CardCourses @selected-courses="handleSelectedCourses" />
+      </template>
+
+      <!-- For Course -->
+      <template v-if="addCourseMode || editCourseMode">
         <div class="flex flex-col gap-3">
-          <div class="field">
-            <label class="font-medium mb-2 block">Course Level</label>
-            <InputNumber
-              v-model="dialogData.level"
-              class="w-full"
-              placeholder="Level Number"
-              disabled
-            />
-          </div>
           <div class="field">
             <label class="font-medium mb-2 block">Course Title</label>
             <InputText
@@ -702,22 +741,6 @@
               placeholder="Enter course description"
               rows="3"
             />
-          </div>
-          <div class="field">
-            <label class="font-medium mb-2 block">Video URL (Optional)</label>
-            <InputText
-              v-model="dialogData.videoUrl"
-              class="w-full"
-              placeholder="Enter video URL"
-            />
-          </div>
-          <div class="field-checkbox">
-            <Checkbox
-              v-model="dialogData.isVideo"
-              :binary="true"
-              inputId="isVideo"
-            />
-            <label for="isVideo" class="ml-2">This is a video course</label>
           </div>
         </div>
       </template>
@@ -743,7 +766,7 @@
         />
       </template>
 
-      <div class="flex justify-end gap-2">
+      <div v-if="!addLevelMode" class="flex justify-end gap-2">
         <Button
           label="Cancel"
           icon="pi pi-times"
