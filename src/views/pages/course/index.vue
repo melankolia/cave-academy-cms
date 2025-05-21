@@ -32,19 +32,17 @@
       loading.value = true;
       const {
         data: {
-          result: { listData, totalElements },
+          data: { courses },
           message,
         },
       } = await courseService.list({
         page: options.value.currentPage,
         limit: options.value.rowsPage,
       });
+
       if (message == "OK") {
-        listData.map((e, id) => {
-          e.id = id;
-        });
-        courseData.value = [...listData];
-        totalRecords.value = totalElements;
+        courseData.value = [...courses];
+        totalRecords.value = courses.length;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -179,6 +177,7 @@
         <template #empty> No Course found. </template>
         <template #loading> Loading Course data. Please wait. </template>
 
+        <Column field="id" header="No" sortable style="min-width: 2rem" />
         <Column field="title" header="Title" sortable style="min-width: 16rem">
           <template #body="slotProps">
             <Button
@@ -188,19 +187,13 @@
             />
           </template>
         </Column>
-        <Column header="Photo">
-          <template #body="slotProps">
-            <img
-              :src="
-                slotProps.data?.photoVos[slotProps.data?.photoVos.length - 1]
-                  ?.photo || '/images/placeholder-image.png'
-              "
-              alt="sample content"
-              class="rounded"
-              style="width: 128px"
-            />
-          </template>
-        </Column>
+        <Column
+          field="level"
+          header="Level"
+          sortable
+          style="min-width: 16rem"
+        />
+        <Column field="type" header="Type" sortable style="min-width: 16rem" />
         <Column :exportable="false" style="min-width: 12rem">
           <template #body="slotProps">
             <Button

@@ -1,192 +1,354 @@
 <script setup>
-import SkeletonCard from '@/components/Skeleton/Card.vue';
-import { NEWS } from '@/router/constants';
-import NewsService from '@/service/NewsService';
-import { useToast } from 'primevue/usetoast';
-import Galleria from 'primevue/galleria';
-import { onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+  import SkeletonCard from "@/components/Skeleton/Card.vue";
+  import { COURSE } from "@/router/constants";
+  import CourseService from "@/service/CourseService";
+  import { useToast } from "primevue/usetoast";
+  import { onMounted, reactive, ref } from "vue";
+  import { useRoute, useRouter } from "vue-router";
 
-const router = useRouter();
-const route = useRoute();
-const toast = useToast();
-const newsService = reactive(new NewsService());
-const loading = ref(false);
+  import EditorJS from "@editorjs/editorjs";
+  import Header from "@editorjs/header";
+  import List from "@editorjs/list";
+  import SimpleImage from "@editorjs/simple-image";
+  import Paragraph from "@editorjs/paragraph";
+  import ImageTool from "@editorjs/image";
+  import CodeTool from "@editorjs/code";
+  import Underline from "@editorjs/underline";
+  import LinkTool from "@editorjs/link";
+  import RawTool from "@editorjs/raw";
+  import Embed from "@editorjs/embed";
+  import Quote from "@editorjs/quote";
 
-const responsiveOptions = ref([
-    {
-        breakpoint: '1300px',
-        numVisible: 4
-    },
-    {
-        breakpoint: '575px',
-        numVisible: 1
-    }
-]);
+  const router = useRouter();
+  const route = useRoute();
+  const toast = useToast();
+  const courseService = reactive(new CourseService());
+  const loading = ref(false);
+  const editorInstance = ref(null);
 
-const breadcrumbHome = ref({ icon: 'pi pi-home', to: '/' });
-const breadcrumbItems = ref([{ label: 'News List', url: '/news' }, { label: 'News Detail' }]);
-const newsData = ref({
-    secureId: null,
-    title: null,
-    description: null,
-    videoUrl: null,
-    isVideo: false,
-    tags: null,
-    photos: null,
-    thumbnail: null,
-    content: null
-});
+  const breadcrumbHome = ref({ icon: "pi pi-home", to: "/" });
+  const breadcrumbItems = ref([
+    { label: "Course List", url: "/course" },
+    { label: "Course Detail" },
+  ]);
 
-onMounted(async () => {
-    try {
-        loading.value = true;
-        const secureId = route.params?.secureId;
+  const courseData = ref({
+    id: 1,
+    title: "",
+    description: "",
+    level: "",
+    type: "",
+    content: "",
+  });
 
-        const {
-            data: { result, message }
-        } = await newsService.details(secureId);
-        if (message == 'OK') {
-            result.tags = result.tagResponseVos;
-            result.photos = result.photoVos;
-            result.isVideo = !!result.videoUrl;
-            result.videos = result.videoUrl;
+  const courseType = ref([
+    { label: "Offline", value: "offline" },
+    { label: "Online", value: "online" },
+  ]);
 
-            newsData.value = result;
-        } else {
-            throw new Error('Failed to fetch data!');
-        }
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error Data', detail: 'Failed to fetch data!', life: 3000 });
-        router.back();
-    } finally {
-        loading.value = false;
-    }
-});
+  const courseLevel = ref([
+    { label: "Beginner", value: "beginner" },
+    { label: "Intermediate", value: "intermediate" },
+    { label: "Expert", value: "expert" },
+  ]);
 
-const onCancel = () => {
-    router.push({
-        name: NEWS.LIST
+  const selectedCourseType = ref(null);
+  const selectedCourseLevel = ref(null);
+
+  const contentCovered = ref([]);
+
+  const initEditor = async () => {
+    editorInstance.value = new EditorJS({
+      holder: "editorjs",
+      readOnly: true,
+      tools: {
+        header: Header,
+        list: List,
+        image: SimpleImage,
+        paragraph: {
+          class: Paragraph,
+          inlineToolbar: true,
+        },
+        image: {
+          class: ImageTool,
+          config: {
+            endpoints: {
+              byFile: "http://localhost:8008/uploadFile",
+              byUrl: "http://localhost:8008/fetchUrl",
+            },
+          },
+        },
+        code: CodeTool,
+        underline: Underline,
+        linkTool: {
+          class: LinkTool,
+          config: {
+            endpoint: "http://localhost:8008/fetchUrl",
+          },
+        },
+        raw: RawTool,
+        embed: Embed,
+        quote: Quote,
+      },
+      data: courseData.value.content
+        ? JSON.parse(courseData.value.content)
+        : {},
     });
-};
+  };
 
-const onEdit = () => {
-    router.push({
-        name: NEWS.UPDATE,
-        params: {
-            secureId: newsData.value?.secureId
-        }
-    });
-};
+  onMounted(async () => {
+    await getDetail();
+    await initEditor();
+  });
 
-const loadingDelete = ref(false);
-const deleteNewsDialog = ref(false);
-const onDelete = () => {
-    deleteNewsDialog.value = true;
-};
-async function deleteNews() {
+  const getDetail = async () => {
     try {
-        loadingDelete.value = true;
-        const {
-            data: { result, message }
-        } = await newsService.delete(newsData.value?.secureId);
+      loading.value = true;
+      const secureId = route.params?.secureId;
 
-        if (message == 'OK') {
-            deleteNewsDialog.value = false;
-            toast.add({ severity: 'success', summary: 'Successful', detail: 'News Deleted', life: 3000 });
-            router.replace({
-                name: NEWS.LIST
-            });
-        } else {
-            console.error(result);
-            throw new Error('Failed to Delete News!');
-        }
+      const response = await courseService.details(secureId);
+      console.log("API Response:", response);
+
+      const {
+        data: { data, message },
+      } = response;
+
+      if (message === "OK") {
+        console.log("Course Data:", data);
+
+        // Basic course information
+        courseData.value = {
+          id: data?.id || 0,
+          title: data?.title || "",
+          description: data?.description || "",
+          videoUrl: data?.videoUrl || "",
+          isVideo: Boolean(data?.videoUrl),
+          // Handle photos and thumbnails
+          photos: Array.isArray(data?.photoVos) ? data.photoVos : [],
+          thumbnails: data?.thumbnails || "",
+          // Handle tags
+          tags: Array.isArray(data?.tagResponseVos) ? data.tagResponseVos : [],
+          // Handle content for EditorJS
+          content: data?.content || "",
+        };
+
+        console.log("Processed Course Data:", courseData.value);
+
+        // Handle course type selection
+        selectedCourseType.value =
+          data?.type === "online"
+            ? courseType.value[1] // online
+            : courseType.value[0]; // offline
+
+        // Handle course level selection
+        selectedCourseLevel.value =
+          courseLevel.value.find((level) => level.value === data?.level) ||
+          courseLevel.value[0];
+
+        // Handle content covered
+        contentCovered.value = Array.isArray(data?.contentCovered)
+          ? data.contentCovered
+          : [];
+
+        console.log("Content Covered:", contentCovered.value);
+      } else {
+        throw new Error("Failed to fetch data!");
+      }
     } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error Data', detail: 'Failed to Delete News!', life: 3000 });
+      console.error("Error in getDetail:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: error.message || "Failed to fetch data!",
+        life: 3000,
+      });
     } finally {
-        loadingDelete.value = false;
+      loading.value = false;
     }
-}
+  };
+
+  const onBack = () => {
+    router.push({
+      name: COURSE.LIST,
+    });
+  };
 </script>
 
 <template>
-    <div class="card">
-        <Toolbar>
-            <template #start>
-                <Breadcrumb style="padding: 4px" :home="breadcrumbHome" :model="breadcrumbItems" />
-            </template>
-        </Toolbar>
-        <div v-if="loading">
-            <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
-            <SkeletonCard />
-        </div>
-        <div v-else>
-            <div class="font-semibold text-2xl mt-8 mb-6">News Detail</div>
-            <div class="flex flex-col gap-2">
-                <Panel :header="newsData.title" :toggleable="true">
-                    <p class="leading-normal m-0 min-h-1/4">
-                        {{ newsData.description }}
-                    </p>
-                    <div class="flex flex-row gap-1 mt-3">
-                        <Tag severity="info" :value="el.name" v-for="(el, id) in newsData.tags" :key="id"></Tag>
-                    </div>
-                </Panel>
-                <Panel header="Photo" :toggleable="true">
-                    <Galleria showItemNavigators showIndicators showIndicatorsOnItem :value="newsData.photos" :numVisible="5" :responsiveOptions="responsiveOptions" containerStyle="max-width: 640px">
-                        <template #item="slotProps">
-                            <img :src="slotProps.item.photo" :alt="slotProps.item.photo" style="width: 100%" />
-                        </template>
-                        <template #footer></template>
-                    </Galleria>
-                </Panel>
-                <Panel v-if="newsData.isVideo" header="Video" :toggleable="true">
-                    <div class="video-container">
-                        <iframe :src="newsData.videoUrl" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                    </div>
-                </Panel>
-                <Panel header="Thumbnail" :toggleable="true">
-                    <img v-if="newsData.thumbnail" :src="newsData.thumbnail" alt="News Detail" class="rounded" style="width: 368px" />
-                </Panel>
-                <Panel header="Content" :toggleable="true">
-                    <p>{{ newsData.content }}</p>
-                </Panel>
-            </div>
-            <div class="flex flex-row justify-end mt-12 gap-4">
-                <Button label="Cancel" icon="pi pi-times" severity="danger" text @click="onCancel" />
-                <Button label="Delete Data" icon="pi pi-trash" severity="danger" @click="onDelete" />
-                <Button label="Edit Data" icon="pi pi-pencil" @click="onEdit" />
-            </div>
-        </div>
-        <Dialog v-model:visible="deleteNewsDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="flex items-center gap-4">
-                <i class="pi pi-exclamation-triangle !text-3xl" />
-                <span
-                    >Are you sure you want to delete <b>{{ newsData.title }}</b
-                    >?</span
-                >
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteNewsDialog = false" />
-                <Button label="Yes" icon="pi pi-check" @click="deleteNews" :loading="loadingDelete" />
-            </template>
-        </Dialog>
+  <div class="card">
+    <Toolbar>
+      <template #start>
+        <Breadcrumb
+          style="padding: 4px"
+          :home="breadcrumbHome"
+          :model="breadcrumbItems"
+        />
+      </template>
+    </Toolbar>
+    <div v-if="loading">
+      <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
+      <SkeletonCard />
     </div>
+  </div>
+
+  <div class="card mb-2">
+    <p class="font-semibold text-2xl mb-8">Course Detail</p>
+    <div class="flex flex-col gap-4 w-full">
+      <FieldText
+        className="flex flex-col flex-wrap gap-2 w-full"
+        name="title"
+        label="Title"
+        :values="courseData.title"
+        disabled
+      />
+      <FieldTextArea
+        className="flex flex-col flex-wrap gap-2 w-full"
+        name="description"
+        label="Description"
+        :values="courseData.description"
+        disabled
+        rows="5"
+      />
+      <div class="flex flex-col gap-4 w-full">
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="videoUrl"
+          label="Video URL"
+          :values="courseData.videoUrl"
+          disabled
+        />
+      </div>
+      <div class="grid grid-cols-12 gap-4">
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="courseLevel">Level</label>
+          <Select
+            id="courseLevel"
+            v-model="courseData.level"
+            display="chip"
+            :options="courseLevel"
+            optionLabel="label"
+            filter
+            placeholder="Select Course Level"
+            class="w-full"
+            disabled
+          />
+        </div>
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="courseType">Type</label>
+          <SelectButton
+            id="courseType"
+            v-model="courseData.type"
+            :options="courseType"
+            optionLabel="label"
+            filter
+            placeholder="Select Course Type"
+            class="w-full"
+            disabled
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-12 gap-2">
+    <div class="col-span-8 card m-0">
+      <p class="font-semibold text-2xl mb-8">About Course</p>
+      <div class="editor-container">
+        <div id="editorjs" class="editor-wrapper"></div>
+      </div>
+    </div>
+    <div class="col-span-4 card h-full">
+      <p class="font-semibold text-2xl mb-8">Content Covered</p>
+      <Accordion :multiple="true">
+        <AccordionTab v-for="(level, lIdx) in contentCovered" :key="lIdx">
+          <template #header>
+            <div class="flex items-center justify-between w-full">
+              <div class="flex items-center gap-4">
+                <span>Level {{ level.level }}: {{ level.title }}</span>
+              </div>
+              <div class="flex items-center gap-2 p-1">
+                <Chip
+                  v-if="!level.linked_course"
+                  label="Current Course"
+                  class="p-chip-success mr-3"
+                />
+              </div>
+            </div>
+          </template>
+
+          <!-- If the level is linked to a course -->
+          <template v-if="level.linked_course">
+            <CardCourse :item="level" />
+          </template>
+
+          <template v-else>
+            <div
+              v-for="(subContent, sIdx) in level.sub_contents"
+              :key="sIdx"
+              class="mb-4"
+            >
+              <Panel
+                :header="subContent.number + '. ' + subContent.title"
+                toggleable
+              >
+                <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
+                <ul class="pl-4">
+                  <li
+                    v-for="(course, courseIdx) in subContent.courses"
+                    :key="courseIdx"
+                    class="flex items-center gap-2 mb-2"
+                  >
+                    <div class="flex-1">
+                      <div class="font-medium">{{ course.title }}</div>
+                      <div class="text-sm text-gray-600">
+                        {{ course.description }}
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </Panel>
+            </div>
+          </template>
+        </AccordionTab>
+      </Accordion>
+    </div>
+  </div>
+  <div class="card surface-ground py-5 mt-4">
+    <div class="flex justify-end px-4">
+      <Button
+        label="Back to List"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        outlined
+        class="w-[130px]"
+        @click="onBack"
+      />
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.video-container {
-    position: relative;
-    width: 75%;
-    padding-bottom: 56.25%; /* Aspect ratio for 16:9 video */
-    height: 0;
-    overflow: hidden;
-}
-
-.video-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
+  .editor-container {
     width: 100%;
-    height: 100%;
-}
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .editor-wrapper {
+    width: 100%;
+    min-height: 300px;
+    border-radius: 0.375rem;
+    padding: 1rem;
+  }
+
+  /* Make the editor responsive */
+  @media (max-width: 768px) {
+    .editor-wrapper {
+      padding: 0.5rem;
+    }
+  }
+
+  :deep(.p-accordion-header-link) {
+    cursor: pointer !important;
+  }
 </style>
