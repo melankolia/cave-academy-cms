@@ -11,7 +11,7 @@
   const toast = useToast();
   const courseData = ref();
   const deleteCourseDialog = ref(false);
-  const course = ref({});
+  const course = ref(null);
   const loading = ref(false);
   const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -64,8 +64,8 @@
     });
   };
 
-  function confirmDeleteCourse(course) {
-    course.value = course;
+  function confirmDeleteCourse(item) {
+    course.value = item;
     deleteCourseDialog.value = true;
   }
 
@@ -134,6 +134,14 @@
     () => options.value,
     (val) => {
       if (val !== null) getList();
+    },
+    { deep: true }
+  );
+
+  watch(
+    () => course.value,
+    (val) => {
+      console.log("Course Data", val);
     },
     { deep: true }
   );
@@ -233,7 +241,8 @@
       <div class="flex items-center gap-4">
         <i class="pi pi-exclamation-triangle !text-3xl" />
         <span v-if="course">
-          Are you sure you want to delete <b>{{ course.title }} </b>?
+          Are you sure you want to delete
+          <b>{{ course.title }} </b>?
         </span>
       </div>
       <template #footer>

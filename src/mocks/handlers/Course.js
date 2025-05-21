@@ -98,6 +98,7 @@ export const handlers = [
           },
           {
             id: 1,
+            secureId: faker.string.uuid(),
             image: "https://picsum.photos/160/90",
             title: "Course 2",
             description: "Description 2",
@@ -107,6 +108,7 @@ export const handlers = [
           },
           {
             id: 0,
+            secureId: faker.string.uuid(),
             image: "https://picsum.photos/160/90",
             title: "Course 1",
             description: "Description 1",

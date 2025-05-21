@@ -5,6 +5,7 @@
   import { useToast } from "primevue/usetoast";
   import { onMounted, reactive, ref } from "vue";
   import { useRoute, useRouter } from "vue-router";
+  import { useConfirm } from "primevue/useconfirm";
 
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
@@ -18,10 +19,12 @@
   import RawTool from "@editorjs/raw";
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
+  import { useForm } from "vee-validate";
 
   const router = useRouter();
   const route = useRoute();
   const toast = useToast();
+  const confirm = useConfirm();
   const courseService = reactive(new CourseService());
   const loading = ref(false);
   const editorInstance = ref(null);
@@ -52,10 +55,9 @@
     { label: "Expert", value: "expert" },
   ]);
 
-  const selectedCourseType = ref(null);
-  const selectedCourseLevel = ref(null);
-
   const contentCovered = ref([]);
+
+  const { setFieldValue } = useForm();
 
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
@@ -96,59 +98,53 @@
     });
   };
 
-  onMounted(async () => {
-    await getDetail();
-    await initEditor();
-  });
-
   const getDetail = async () => {
     try {
       loading.value = true;
       const secureId = route.params?.secureId;
 
       const response = await courseService.details(secureId);
-      console.log("API Response:", response);
 
       const {
-        data: { data, message },
+        data: {
+          data: { course },
+          message,
+        },
       } = response;
 
       if (message === "OK") {
-        console.log("Course Data:", data);
+        setFieldValue("title", course?.title || "");
+        setFieldValue("description", course?.description || "");
+        setFieldValue("videoUrl", course?.videoUrl || "");
 
         // Basic course information
         courseData.value = {
-          id: data?.id || 0,
-          title: data?.title || "",
-          description: data?.description || "",
-          videoUrl: data?.videoUrl || "",
-          isVideo: Boolean(data?.videoUrl),
-          // Handle photos and thumbnails
-          photos: Array.isArray(data?.photoVos) ? data.photoVos : [],
-          thumbnails: data?.thumbnails || "",
-          // Handle tags
-          tags: Array.isArray(data?.tagResponseVos) ? data.tagResponseVos : [],
-          // Handle content for EditorJS
-          content: data?.content || "",
+          id: course?.id || 0,
+          title: course?.title || "",
+          description: course?.description || "",
+          videoUrl: course?.videoUrl || "",
+          level: course?.level || "",
+          type: course?.type || "",
+          content: course?.content || "",
         };
 
-        console.log("Processed Course Data:", courseData.value);
-
-        // Handle course type selection
-        selectedCourseType.value =
-          data?.type === "online"
-            ? courseType.value[1] // online
-            : courseType.value[0]; // offline
-
-        // Handle course level selection
-        selectedCourseLevel.value =
-          courseLevel.value.find((level) => level.value === data?.level) ||
-          courseLevel.value[0];
-
         // Handle content covered
-        contentCovered.value = Array.isArray(data?.contentCovered)
-          ? data.contentCovered
+        contentCovered.value = Array.isArray(course?.contentCovered)
+          ? course.contentCovered
           : [];
+
+        // Initialize Editor with content if available
+        if (editorInstance.value && course?.content) {
+          try {
+            const parsedContent =
+              typeof course.content === "string"
+                ? JSON.parse(course.content)
+                : course.content;
+            editorInstance.value.render(parsedContent);
+          } catch (error) {
+            console.error("Error rendering editor content:", error);
+          }
+        }
 
         console.log("Content Covered:", contentCovered.value);
       } else {
@@ -172,10 +168,50 @@
       name: COURSE.LIST,
     });
   };
+
+  const onEdit = () => {
+    router.push({
+      name: COURSE.EDIT,
+      params: {
+        secureId: route.params?.secureId,
+      },
+    });
+  };
+
+  const onDelete = (item) => {
+    confirm.require({
+      message: "Are you sure you want to delete this course?",
+      header: "Delete Confirmation",
+      icon: "pi pi-exclamation-triangle",
+      rejectProps: {
+        label: "Cancel",
+        severity: "secondary",
+        outlined: true,
+      },
+      acceptProps: {
+        label: "Delete",
+        severity: "danger",
+      },
+      accept: () => {
+        deleteProduct(item);
+      },
+    });
+  };
+
+  const deleteProduct = (item) => {
+    console.log("Delete Course", item);
+  };
+
+  onMounted(async () => {
+    await getDetail();
+    await initEditor();
+  });
 </script>
 
 <template>
   <div class="card">
+    <ConfirmDialog />
+
     <Toolbar>
       <template #start>
         <Breadcrumb
@@ -227,6 +263,7 @@
             display="chip"
             :options="courseLevel"
             optionLabel="label"
+            optionValue="value"
             filter
             placeholder="Select Course Level"
             class="w-full"
@@ -240,6 +277,7 @@
             v-model="courseData.type"
             :options="courseType"
             optionLabel="label"
+            optionValue="value"
             filter
             placeholder="Select Course Type"
             class="w-full"
@@ -314,14 +352,27 @@
     </div>
   </div>
   <div class="card surface-ground py-5 mt-4">
-    <div class="flex justify-end px-4">
+    <div class="flex justify-start gap-3 px-4">
       <Button
         label="Back to List"
         icon="pi pi-arrow-left"
         severity="secondary"
         outlined
-        class="w-[130px]"
         @click="onBack"
+      />
+      <Button
+        label="Edit Course"
+        icon="pi pi-pencil"
+        severity="primary"
+        class="dark:text-white"
+        @click="onEdit"
+      />
+      <Button
+        label="Delete Course"
+        icon="pi pi-trash"
+        severity="danger"
+        class="dark:text-white"
+        @click="onDelete"
       />
     </div>
   </div>

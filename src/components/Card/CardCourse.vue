@@ -1,6 +1,8 @@
 <template>
   <div
+    :key="item.secureId"
     class="flex flex-col sm:flex-row sm:items-center p-2.5 gap-4 hover:bg-green-950 transition-colors duration-200 cursor-pointer"
+    @click="handleClick"
   >
     <div class="md:w-40 relative mr-2.5">
       <img
@@ -35,17 +37,21 @@
   </div>
 </template>
 <script setup>
-  import { computed } from "vue";
+  import { computed, watch } from "vue";
+  import { useRouter, useRoute } from "vue-router";
 
+  const router = useRouter();
+  const route = useRoute();
   const props = defineProps({
     item: {
       type: Object,
       required: true,
       default: () => ({
-        image: "https://picsum.photos/160/90",
-        title: "Course 1",
-        description: "Description 1",
-        date: ["01/01/2024", "01/02/2024"],
+        secureId: "",
+        image: "",
+        title: "",
+        description: "",
+        date: [],
       }),
     },
   });
@@ -53,4 +59,15 @@
   const date = computed(() => {
     return props.item.date?.[0] + " - " + props.item.date?.[1];
   });
+
+  watch(
+    () => route.params.secureId,
+    (newId) => {
+      if (newId) router.go(0);
+    }
+  );
+
+  const handleClick = () => {
+    router.push(`/course/${props.item.secureId}`);
+  };
 </script>

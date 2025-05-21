@@ -1,22 +1,32 @@
 <script setup>
-  import SkeletonCard from "@/components/Skeleton/Card.vue";
-  import CardCourse from "@/components/Card/CardCourse.vue";
-  import { COURSE } from "@/router/constants";
-  import CourseService from "@/service/CourseService";
-  import { toTypedSchema } from "@vee-validate/zod";
-  import { useToast } from "primevue/usetoast";
-  import { useField, useForm } from "vee-validate";
+  // Core Vue and Router imports
   import {
     computed,
-    onMounted,
     onBeforeUnmount,
+    onMounted,
     reactive,
     ref,
     watch,
   } from "vue";
   import { useRoute, useRouter } from "vue-router";
+
+  // Components
+  import SkeletonCard from "@/components/Skeleton/Card.vue";
+  import CardCourse from "@/components/Card/CardCourse.vue";
+
+  // Services and Constants
+  import { COURSE } from "@/router/constants";
+  import CourseService from "@/service/CourseService";
+
+  // Form Validation
+  import { toTypedSchema } from "@vee-validate/zod";
+  import { useField, useForm } from "vee-validate";
   import * as zod from "zod";
 
+  // UI Components
+  import { useToast } from "primevue/usetoast";
+
+  // Editor.js and plugins
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
   import List from "@editorjs/list";
@@ -30,6 +40,7 @@
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
 
+  // Course Data and Options
   const courseData = ref({
     id: 1,
     title: "Introduction to 3D Modelling",
@@ -50,6 +61,7 @@
     { label: "Expert", value: "expert" },
   ]);
 
+  // Core Setup
   const toast = useToast();
   const route = useRoute();
   const router = useRouter();
@@ -58,17 +70,17 @@
   const loading = ref(false);
   const editorInstance = ref(null);
 
+  // Breadcrumb Setup
   const breadcrumbHome = ref({ icon: "pi pi-home", to: "/" });
-
   const isUpdate = computed(() => {
     return route.params?.secureId;
   });
-
   const breadcrumbItems = ref([
     { label: "Course List", url: "/course" },
     { label: "Course " + (isUpdate.value ? "Update" : "Create") },
   ]);
 
+  // Form Validation Schema
   const validationSchema = toTypedSchema(
     zod.object({
       title: zod.string().min(1, { message: "Title is Required" }),
@@ -76,7 +88,6 @@
       videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
       level: zod.union([zod.string().min(1, { message: "Level is Required" })]),
       type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
-
       content: zod
         .string({
           required_error: "Content is Required",
@@ -108,7 +119,9 @@
         ),
     })
   );
-  const { handleSubmit, errors, meta } = useForm({
+
+  // Form Setup
+  const { handleSubmit, errors, meta, setFieldValue } = useForm({
     validationSchema,
     initialValues: {
       content: "",
@@ -128,6 +141,14 @@
     setTouched: setContentTouched,
   } = useField("content");
 
+  const { value: title } = useField("title", undefined, {
+    initialValue: courseData.value.title,
+  });
+
+  const { value: level, errorMessage: levelError } = useField("level");
+  const { value: type, errorMessage: typeError } = useField("type");
+
+  // Editor Setup
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
       holder: "editorjs",
@@ -135,7 +156,6 @@
       readOnly: false,
       autofocus: true,
       tools: {
-        // Add your tools configuration here
         header: Header,
         list: List,
         image: SimpleImage,
@@ -147,8 +167,8 @@
           class: ImageTool,
           config: {
             endpoints: {
-              byFile: "http://localhost:8008/uploadFile", // Your backend file uploader endpoint
-              byUrl: "http://localhost:8008/fetchUrl", // Your endpoint that provides uploading by Url
+              byFile: "http://localhost:8008/uploadFile",
+              byUrl: "http://localhost:8008/fetchUrl",
             },
           },
         },
@@ -157,7 +177,7 @@
         linkTool: {
           class: LinkTool,
           config: {
-            endpoint: "http://localhost:8008/fetchUrl", // Your backend endpoint for url data fetching,
+            endpoint: "http://localhost:8008/fetchUrl",
           },
         },
         raw: RawTool,
@@ -180,58 +200,38 @@
     });
   };
 
-  onMounted(async () => {
-    await initEditor();
-    getDetail();
-  });
+  // Content Covered Setup
+  const contentCovered = ref([]);
+  const dialogVisible = ref(false);
+  const dialogData = ref({});
+  const dialogMode = ref("add-level");
 
-  const getDetail = async () => {
-    contentCovered.value = [
-      {
-        id: 1,
-        level: 1,
-        title: courseData.value.title,
-        sub_contents: [
-          {
-            number: "01",
-            title: "Understanding Digi-Doubles",
-            description:
-              "Learn what Digi-Doubles are and their significance in modern VFX.",
-            is_open: false,
-            courses: [
-              {
-                title: "Understanding Digi-Doubles",
-                description:
-                  "Learn what Digi-Doubles are and their significance in modern VFX.",
-                is_checked: true,
-              },
-              {
-                title: "Getting Started with Midjourney",
-                description:
-                  "Learn what Digi-Doubles are and their significance in modern VFX.",
-                is_checked: false,
-              },
-            ],
-          },
-          {
-            number: "02",
-            title: "Getting Started with Midjourney",
-            description:
-              "A brief introduction to using Midjourney for creating stunning visuals.",
-            is_open: false,
-            courses: [
-              {
-                title: "Understanding Digi-Doubles",
-                description:
-                  "Learn what Digi-Doubles are and their significance in modern VFX.",
-                is_checked: true,
-              },
-            ],
-          },
-        ],
-      },
-    ];
-  };
+  // Computed Properties for Dialog Modes
+  const addLevelMode = computed(() => dialogMode.value === "add-level");
+  const addCourseMode = computed(() => dialogMode.value === "add-course");
+  const addSubContentMode = computed(
+    () => dialogMode.value === "add-sub-content"
+  );
+  const editCourseMode = computed(() => dialogMode.value === "edit-course");
+  const editSubContentMode = computed(
+    () => dialogMode.value === "edit-sub-content"
+  );
+
+  // Menu Setup
+  const menu = ref();
+  const menuItems = ref([]);
+  const levelMenu = ref();
+  const levelMenuItems = ref([]);
+  const courseMenu = ref();
+  const courseMenuItems = ref([]);
+  const deleteDialog = ref(false);
+  const deleteData = ref(null);
+
+  // Lifecycle Hooks
+  onMounted(async () => {
+    if (isUpdate.value) await getDetail();
+    await initEditor();
+  });
 
   onBeforeUnmount(() => {
     if (editorInstance.value) {
@@ -239,26 +239,92 @@
     }
   });
 
-  // Add useField for title
-  const { value: title } = useField("title", undefined, {
-    initialValue: courseData.value.title,
-  });
-
-  // Watch the title field from vee-validate
+  // Watchers
   watch(title, (newTitle) => {
     courseData.value.title = newTitle;
-
     const findIndex = contentCovered.value.findIndex(
       (item) => item.id === courseData.value.id
     );
-    // Update the first level title if it exists
     if (findIndex !== -1) {
       contentCovered.value[findIndex].title = newTitle;
     }
   });
 
-  const { value: level, errorMessage: levelError } = useField("level");
-  const { value: type, errorMessage: typeError } = useField("type");
+  // Methods
+  const getDetail = async () => {
+    try {
+      loading.value = true;
+      const secureId = route.params?.secureId;
+
+      const response = await courseService.details(secureId);
+
+      const {
+        data: {
+          data: { course },
+          message,
+        },
+      } = response;
+
+      if (message === "OK") {
+        const fields = [
+          "title",
+          "description",
+          "videoUrl",
+          "level",
+          "type",
+          "content",
+        ];
+        fields.forEach((field) => {
+          setFieldValue(field, course?.[field] || "");
+        });
+
+        // Basic course information
+        courseData.value = {
+          id: course?.id || 0,
+          title: course?.title || "",
+          description: course?.description || "",
+          videoUrl: course?.videoUrl || "",
+          level: course?.level || "",
+          type: course?.type || "",
+          content: course?.content || "",
+        };
+
+        // Handle content covered
+        contentCovered.value = Array.isArray(course?.contentCovered)
+          ? course.contentCovered
+          : [];
+
+        // Initialize Editor with content if available
+        if (editorInstance.value && course?.content) {
+          console.log("editorInstance.value", editorInstance.value);
+          console.log("course?.content", course?.content);
+          try {
+            const parsedContent =
+              typeof course.content === "string"
+                ? JSON.parse(course.content)
+                : course.content;
+            editorInstance.value.render(parsedContent);
+          } catch (error) {
+            console.error("Error rendering editor content:", error);
+          }
+        }
+
+        console.log("Content Covered:", contentCovered.value);
+      } else {
+        throw new Error("Failed to fetch data!");
+      }
+    } catch (error) {
+      console.error("Error in getDetail:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: error.message || "Failed to fetch data!",
+        life: 3000,
+      });
+    } finally {
+      loading.value = false;
+    }
+  };
 
   const onCancel = () => {
     router.replace({
@@ -271,7 +337,6 @@
       ...values,
       contentCovered: contentCovered.value,
     };
-
     console.log({ data });
   });
 
@@ -279,85 +344,7 @@
     onSubmit();
   };
 
-  const contentCovered = ref([
-    // {
-    //   id: 1,
-    //   level: 1,
-    //   title: "Introduction to 3D Modelling",
-    //   sub_contents: [
-    //     {
-    //       number: "01",
-    //       title: "Understanding Digi-Doubles",
-    //       description:
-    //         "Learn what Digi-Doubles are and their significance in modern VFX.",
-    //       is_open: false,
-    //       courses: [
-    //         {
-    //           title: "Understanding Digi-Doubles",
-    //           description:
-    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
-    //           is_checked: true,
-    //         },
-    //         {
-    //           title: "Getting Started with Midjourney",
-    //           description:
-    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
-    //           is_checked: false,
-    //         },
-    //       ],
-    //     },
-    //     {
-    //       number: "02",
-    //       title: "Getting Started with Midjourney",
-    //       description:
-    //         "A brief introduction to using Midjourney for creating stunning visuals.",
-    //       is_open: false,
-    //       courses: [
-    //         {
-    //           title: "Understanding Digi-Doubles",
-    //           description:
-    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
-    //           is_checked: true,
-    //         },
-    //       ],
-    //     },
-    //   ],
-    // },
-    // {
-    //   id: 2,
-    //   level: 2,
-    //   title: "Introducing Midjourney",
-    //   image: "https://picsum.photos/160/90",
-    //   description: "Learn how to use Midjourney to create stunning visuals.",
-    //   linked_course: "url/link/to/course",
-    //   date: ["01/01/2024", "01/02/2024"],
-    // },
-  ]);
-
-  const dialogVisible = ref(false);
-  const dialogData = ref({}); // for add/edit
-  const dialogMode = ref("add-level"); // or "edit"
-
-  const addLevelMode = computed(() => {
-    return dialogMode.value === "add-level";
-  });
-
-  const addCourseMode = computed(() => {
-    return dialogMode.value === "add-course";
-  });
-
-  const addSubContentMode = computed(() => {
-    return dialogMode.value === "add-sub-content";
-  });
-
-  const editCourseMode = computed(() => {
-    return dialogMode.value === "edit-course";
-  });
-
-  const editSubContentMode = computed(() => {
-    return dialogMode.value === "edit-sub-content";
-  });
-
+  // Content Management Methods
   function addLevel() {
     dialogMode.value = "add-level";
     dialogVisible.value = true;
@@ -432,7 +419,6 @@
 
   function saveDialog() {
     if (addCourseMode.value) {
-      // Add course
       contentCovered.value[dialogData.value.levelIndex].sub_contents[
         dialogData.value.subContentIndex
       ].courses.push({
@@ -441,7 +427,6 @@
         is_checked: false,
       });
     } else if (addSubContentMode.value) {
-      // Add sub-content
       contentCovered.value[dialogData.value.levelIndex].sub_contents.push({
         number: dialogData.value.number,
         title: dialogData.value.title,
@@ -450,7 +435,6 @@
         courses: [],
       });
     } else if (editCourseMode.value) {
-      // Edit course
       const { levelIndex, subContentIndex, courseIndex, title, description } =
         dialogData.value;
       const course =
@@ -460,7 +444,6 @@
       course.title = title;
       course.description = description;
     } else if (editSubContentMode.value) {
-      // Edit sub-content
       const { levelIndex, subContentIndex, title, description } =
         dialogData.value;
       const subContent =
@@ -477,14 +460,10 @@
       level: contentCovered.value.length + 1,
       linked_course: "url/link/to/course/" + courses.id,
     };
-
     contentCovered.value.push(courses);
     dialogMode.value = "add-course";
     dialogVisible.value = false;
   };
-
-  const deleteDialog = ref(false);
-  const deleteData = ref(null);
 
   function deleteSubContent(levelIndex, subContentIndex) {
     deleteDialog.value = true;
@@ -501,8 +480,6 @@
     if (deleteData.value.type === "sub-content") {
       const { levelIndex, subContentIndex } = deleteData.value;
       contentCovered.value[levelIndex].sub_contents.splice(subContentIndex, 1);
-
-      // Renumber remaining sub-contents
       contentCovered.value[levelIndex].sub_contents.forEach(
         (subContent, index) => {
           subContent.number = String(index + 1).padStart(2, "0");
@@ -511,8 +488,6 @@
     } else if (deleteData.value.type === "level") {
       const { levelIndex } = deleteData.value;
       contentCovered.value.splice(levelIndex, 1);
-
-      // Renumber remaining levels
       contentCovered.value.forEach((level, index) => {
         level.level = index + 1;
       });
@@ -520,9 +495,6 @@
     deleteDialog.value = false;
     deleteData.value = null;
   }
-
-  const menu = ref();
-  const menuItems = ref([]);
 
   function showMenu(event, levelIndex, subContentIndex) {
     menuItems.value = [
@@ -545,11 +517,15 @@
     menu.value.toggle(event);
   }
 
-  const levelMenu = ref();
-  const levelMenuItems = ref([]);
-
   function showLevelMenu(event, levelIndex) {
     levelMenuItems.value = [
+      {
+        label: "Edit Course",
+        icon: "pi pi-pencil",
+        command: () => {
+          editLevel(levelIndex);
+        },
+      },
       {
         label: "Delete Course",
         icon: "pi pi-trash",
@@ -563,17 +539,19 @@
   }
 
   function editLevel(levelIndex) {
-    dialogMode.value = "edit";
-    const level = contentCovered.value[levelIndex];
-    dialogData.value = {
-      level: level.level,
-      title: level.title,
-      description: "", // Add description field
-      videoUrl: "", // Add video URL field
-      isVideo: false, // Add isVideo field
-      levelIndex,
-    };
-    dialogVisible.value = true;
+    const secureId = contentCovered.value[levelIndex]?.secureId;
+
+    if (!secureId) {
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: "Secure Id not found",
+      });
+
+      return;
+    }
+
+    router.push(`/course/update/${secureId}`);
   }
 
   function deleteLevel(levelIndex) {
@@ -584,9 +562,6 @@
       title: contentCovered.value[levelIndex].title,
     };
   }
-
-  const courseMenu = ref();
-  const courseMenuItems = ref([]);
 
   function showCourseMenu(event, levelIndex, subContentIndex, courseIndex) {
     courseMenuItems.value = [
@@ -610,19 +585,14 @@
   }
 
   const handleDialogHeader = computed(() => {
-    if (addLevelMode.value) {
-      return "Add Level";
-    } else if (addCourseMode.value) {
-      return "Add Course";
-    } else if (addSubContentMode.value) {
-      return "Add Sub-Content";
-    } else if (editCourseMode.value) {
-      return "Edit Course";
-    } else if (editSubContentMode.value) {
-      return "Edit Sub-Content";
-    }
+    if (addLevelMode.value) return "Add Level";
+    if (addCourseMode.value) return "Add Course";
+    if (addSubContentMode.value) return "Add Sub-Content";
+    if (editCourseMode.value) return "Edit Course";
+    if (editSubContentMode.value) return "Edit Sub-Content";
   });
 
+  // Drag and Drop Methods
   const handleDragStart = (event, index) => {
     event.dataTransfer.setData("text/plain", index);
   };
@@ -638,8 +608,6 @@
       const item = contentCovered.value[dragIndex];
       contentCovered.value.splice(dragIndex, 1);
       contentCovered.value.splice(dropIndex, 0, item);
-
-      // Update level numbers
       contentCovered.value.forEach((level, index) => {
         level.level = index + 1;
       });
@@ -845,9 +813,6 @@
   <div class="card surface-ground py-5 mt-4">
     <div class="flex justify-end px-4">
       <div class="flex gap-3">
-        <div v-if="Object.keys(errors).length" class="text-red-500">
-          Form has errors: {{ errors }}
-        </div>
         <Button
           label="Cancel"
           icon="pi pi-times"
