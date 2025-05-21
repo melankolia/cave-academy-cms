@@ -18,6 +18,10 @@
       type: String,
       default: "",
     },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const { value, errorMessage, meta } = useField(() => props.name, undefined, {
@@ -41,6 +45,7 @@
       autofocus
       :rows="props.rows"
       :placeholder="props.placeholder"
+      :disabled="props.disabled"
     />
     <small v-if="meta.touched && !meta.valid" class="text-red-500">{{
       errorMessage

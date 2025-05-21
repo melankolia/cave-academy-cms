@@ -31,13 +31,11 @@
   import Quote from "@editorjs/quote";
 
   const courseData = ref({
-    title: "",
+    id: 1,
+    title: "Introduction to 3D Modelling",
     description: "",
-    photos: "",
-    thumbnails: "",
-    videoUrl: "",
-    isVideo: false,
-    tags: "",
+    level: "",
+    type: "",
     content: "",
   });
 
@@ -52,8 +50,6 @@
     { label: "Expert", value: "expert" },
   ]);
 
-  const selectedCourseType = ref(null);
-  const selectedCourseLevel = ref(null);
   const toast = useToast();
   const route = useRoute();
   const router = useRouter();
@@ -72,6 +68,65 @@
     { label: "Course List", url: "/course" },
     { label: "Course " + (isUpdate.value ? "Update" : "Create") },
   ]);
+
+  const validationSchema = toTypedSchema(
+    zod.object({
+      title: zod.string().min(1, { message: "Title is Required" }),
+      description: zod.string().min(1, { message: "Description is Required" }),
+      videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
+      level: zod.union([zod.string().min(1, { message: "Level is Required" })]),
+      type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
+
+      content: zod
+        .string({
+          required_error: "Content is Required",
+          invalid_type_error: "Content must be a string",
+        })
+        .min(1, { message: "Content cannot be empty" })
+        .refine(
+          (val) => {
+            if (!val) return false;
+            try {
+              const parsed = JSON.parse(val);
+              return (
+                parsed &&
+                parsed.blocks &&
+                Array.isArray(parsed.blocks) &&
+                parsed.blocks.length > 0 &&
+                parsed.blocks.some(
+                  (block) =>
+                    block.data &&
+                    block.data.text &&
+                    block.data.text.trim().length > 0
+                )
+              );
+            } catch {
+              return false;
+            }
+          },
+          { message: "Please add some content to the editor" }
+        ),
+    })
+  );
+  const { handleSubmit, errors, meta } = useForm({
+    validationSchema,
+    initialValues: {
+      content: "",
+      title: courseData.value.title,
+      description: courseData.value.description,
+      level: courseData.value.level,
+      type: courseData.value.type,
+      videoUrl: courseData.value.videoUrl,
+    },
+  });
+
+  const {
+    value: content,
+    errorMessage: contentError,
+    setValue: setValueContent,
+    meta: contentMeta,
+    setTouched: setContentTouched,
+  } = useField("content");
 
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
@@ -113,16 +168,70 @@
         ? JSON.parse(courseData.value.content)
         : {},
       onChange: async () => {
-        const outputData = await editorInstance.value.save();
-        console.log(outputData);
-        courseData.value.content = JSON.stringify(outputData);
+        try {
+          const outputData = await editorInstance.value.save();
+          const jsonString = JSON.stringify(outputData);
+          await setValueContent(jsonString);
+          await setContentTouched(true);
+        } catch (error) {
+          console.error("Error in onChange:", error);
+        }
       },
     });
   };
 
   onMounted(async () => {
     await initEditor();
+    getDetail();
   });
+
+  const getDetail = async () => {
+    contentCovered.value = [
+      {
+        id: 1,
+        level: 1,
+        title: courseData.value.title,
+        sub_contents: [
+          {
+            number: "01",
+            title: "Understanding Digi-Doubles",
+            description:
+              "Learn what Digi-Doubles are and their significance in modern VFX.",
+            is_open: false,
+            courses: [
+              {
+                title: "Understanding Digi-Doubles",
+                description:
+                  "Learn what Digi-Doubles are and their significance in modern VFX.",
+                is_checked: true,
+              },
+              {
+                title: "Getting Started with Midjourney",
+                description:
+                  "Learn what Digi-Doubles are and their significance in modern VFX.",
+                is_checked: false,
+              },
+            ],
+          },
+          {
+            number: "02",
+            title: "Getting Started with Midjourney",
+            description:
+              "A brief introduction to using Midjourney for creating stunning visuals.",
+            is_open: false,
+            courses: [
+              {
+                title: "Understanding Digi-Doubles",
+                description:
+                  "Learn what Digi-Doubles are and their significance in modern VFX.",
+                is_checked: true,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+  };
 
   onBeforeUnmount(() => {
     if (editorInstance.value) {
@@ -130,27 +239,26 @@
     }
   });
 
-  const validationSchema = toTypedSchema(
-    zod.object({
-      title: zod.string().min(1, { message: "Title is Required" }),
-      description: zod.string().min(1, { message: "Description is Required" }),
-      thumbnails: zod.string().min(1, { message: "Thumbnail is Required" }),
-      tags: zod.union([
-        zod.string().min(1, { message: "Tag's is Required" }),
-        zod
-          .string()
-          .array()
-          .nonempty({ message: "Atleast one tag is required" }),
-      ]),
-      videoUrl: zod.string().optional().nullable(),
-      isVideo: zod.boolean().optional(),
-      photos: zod.string().nullable(),
-      content: zod.string().nullable(),
-    })
-  );
-  const { handleSubmit } = useForm({
-    validationSchema,
+  // Add useField for title
+  const { value: title } = useField("title", undefined, {
+    initialValue: courseData.value.title,
   });
+
+  // Watch the title field from vee-validate
+  watch(title, (newTitle) => {
+    courseData.value.title = newTitle;
+
+    const findIndex = contentCovered.value.findIndex(
+      (item) => item.id === courseData.value.id
+    );
+    // Update the first level title if it exists
+    if (findIndex !== -1) {
+      contentCovered.value[findIndex].title = newTitle;
+    }
+  });
+
+  const { value: level, errorMessage: levelError } = useField("level");
+  const { value: type, errorMessage: typeError } = useField("type");
 
   const onCancel = () => {
     router.replace({
@@ -158,66 +266,72 @@
     });
   };
 
-  const saveData = async () => {
+  const onSubmit = handleSubmit(async (values) => {
     const data = {
-      ...courseData.value,
-      content: contentCovered.value,
+      ...values,
+      contentCovered: contentCovered.value,
     };
-    console.log(data);
+
+    console.log({ data });
+  });
+
+  const saveData = () => {
+    onSubmit();
   };
 
   const contentCovered = ref([
-    {
-      level: 1,
-      title: "Introduction to 3D Modelling",
-      is_locked: false,
-      sub_contents: [
-        {
-          number: "01",
-          title: "Understanding Digi-Doubles",
-          description:
-            "Learn what Digi-Doubles are and their significance in modern VFX.",
-          is_open: false,
-          courses: [
-            {
-              title: "Understanding Digi-Doubles",
-              description:
-                "Learn what Digi-Doubles are and their significance in modern VFX.",
-              is_checked: true,
-            },
-            {
-              title: "Getting Started with Midjourney",
-              description:
-                "Learn what Digi-Doubles are and their significance in modern VFX.",
-              is_checked: false,
-            },
-          ],
-        },
-        {
-          number: "02",
-          title: "Getting Started with Midjourney",
-          description:
-            "A brief introduction to using Midjourney for creating stunning visuals.",
-          is_open: false,
-          courses: [
-            {
-              title: "Understanding Digi-Doubles",
-              description:
-                "Learn what Digi-Doubles are and their significance in modern VFX.",
-              is_checked: true,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      level: 2,
-      title: "Introducing Midjourney",
-      image: "https://picsum.photos/160/90",
-      description: "Learn how to use Midjourney to create stunning visuals.",
-      linked_course: "url/link/to/course",
-      date: ["01/01/2024", "01/02/2024"],
-    },
+    // {
+    //   id: 1,
+    //   level: 1,
+    //   title: "Introduction to 3D Modelling",
+    //   sub_contents: [
+    //     {
+    //       number: "01",
+    //       title: "Understanding Digi-Doubles",
+    //       description:
+    //         "Learn what Digi-Doubles are and their significance in modern VFX.",
+    //       is_open: false,
+    //       courses: [
+    //         {
+    //           title: "Understanding Digi-Doubles",
+    //           description:
+    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
+    //           is_checked: true,
+    //         },
+    //         {
+    //           title: "Getting Started with Midjourney",
+    //           description:
+    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
+    //           is_checked: false,
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       number: "02",
+    //       title: "Getting Started with Midjourney",
+    //       description:
+    //         "A brief introduction to using Midjourney for creating stunning visuals.",
+    //       is_open: false,
+    //       courses: [
+    //         {
+    //           title: "Understanding Digi-Doubles",
+    //           description:
+    //             "Learn what Digi-Doubles are and their significance in modern VFX.",
+    //           is_checked: true,
+    //         },
+    //       ],
+    //     },
+    //   ],
+    // },
+    // {
+    //   id: 2,
+    //   level: 2,
+    //   title: "Introducing Midjourney",
+    //   image: "https://picsum.photos/160/90",
+    //   description: "Learn how to use Midjourney to create stunning visuals.",
+    //   linked_course: "url/link/to/course",
+    //   date: ["01/01/2024", "01/02/2024"],
+    // },
   ]);
 
   const dialogVisible = ref(false);
@@ -508,6 +622,29 @@
       return "Edit Sub-Content";
     }
   });
+
+  const handleDragStart = (event, index) => {
+    event.dataTransfer.setData("text/plain", index);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+  };
+
+  const handleDrop = (event, dropIndex) => {
+    event.preventDefault();
+    const dragIndex = parseInt(event.dataTransfer.getData("text/plain"));
+    if (dragIndex !== dropIndex) {
+      const item = contentCovered.value[dragIndex];
+      contentCovered.value.splice(dragIndex, 1);
+      contentCovered.value.splice(dropIndex, 0, item);
+
+      // Update level numbers
+      contentCovered.value.forEach((level, index) => {
+        level.level = index + 1;
+      });
+    }
+  };
 </script>
 
 <template>
@@ -534,7 +671,7 @@
         className="flex flex-col flex-wrap gap-2 w-full"
         name="title"
         label="Title"
-        :values="courseData.title"
+        :values="title"
       />
       <FieldTextArea
         className="flex flex-col flex-wrap gap-2 w-full"
@@ -555,26 +692,34 @@
           <label for="courseLevel">Level</label>
           <Select
             id="courseLevel"
-            v-model="selectedCourseLevel"
+            v-model="level"
             display="chip"
             :options="courseLevel"
             optionLabel="label"
+            optionValue="value"
             filter
             placeholder="Select Course Level"
             class="w-full"
           />
+          <small v-if="errors.level" class="text-red-500">{{
+            errors.level
+          }}</small>
         </div>
         <div class="flex flex-col col-span-6 gap-2">
           <label for="courseType">Type</label>
           <SelectButton
             id="courseType"
-            v-model="selectedCourseType"
+            v-model="type"
             :options="courseType"
             optionLabel="label"
+            optionValue="value"
             filter
             placeholder="Select Course Type"
             class="w-full"
           />
+          <small v-if="errors.type" class="text-red-500">{{
+            errors.type
+          }}</small>
         </div>
       </div>
     </div>
@@ -585,15 +730,27 @@
       <p class="font-semibold text-2xl mb-8">About Course</p>
       <div class="editor-container">
         <div id="editorjs" class="editor-wrapper"></div>
+        <small v-if="errors.content" class="text-red-500 mt-2">{{
+          errors.content
+        }}</small>
       </div>
     </div>
-    <div class="col-span-4 card">
+    <div class="col-span-4 card h-full">
       <p class="font-semibold text-2xl mb-8">Content Covered</p>
       <Accordion :multiple="true">
         <AccordionTab v-for="(level, lIdx) in contentCovered" :key="lIdx">
           <template #header>
-            <div class="flex items-center justify-between w-full">
-              <span>Level {{ level.level }}: {{ level.title }}</span>
+            <div
+              class="flex items-center justify-between w-full draggable-level"
+              draggable="true"
+              @dragstart="handleDragStart($event, lIdx)"
+              @dragover.prevent="handleDragOver"
+              @drop.stop="handleDrop($event, lIdx)"
+            >
+              <div class="flex items-center gap-4">
+                <i class="pi pi-bars text-gray-500"></i>
+                <span>Level {{ level.level }}: {{ level.title }}</span>
+              </div>
               <div class="flex items-center gap-2 p-1">
                 <Button
                   v-if="level.linked_course"
@@ -688,6 +845,9 @@
   <div class="card surface-ground py-5 mt-4">
     <div class="flex justify-end px-4">
       <div class="flex gap-3">
+        <div v-if="Object.keys(errors).length" class="text-red-500">
+          Form has errors: {{ errors }}
+        </div>
         <Button
           label="Cancel"
           icon="pi pi-times"
@@ -746,7 +906,7 @@
       </template>
 
       <!-- For Sub-Content -->
-      <template v-else-if="dialogData.number !== undefined">
+      <template v-else-if="addSubContentMode">
         <InputText
           v-model="dialogData.number"
           class="w-full"
@@ -863,5 +1023,27 @@
   }
   :deep(.p-menu .p-menuitem-link.text-red-500 .p-menuitem-icon) {
     color: var(--red-500);
+  }
+
+  .draggable-level {
+    cursor: grab;
+    user-select: none;
+  }
+
+  .draggable-level:active {
+    cursor: grabbing;
+  }
+
+  .draggable-level:hover {
+    opacity: 0.8;
+  }
+
+  .draggable-level.dragging {
+    opacity: 0.5;
+    background-color: var(--surface-hover);
+  }
+
+  :deep(.p-accordion-header-link) {
+    cursor: pointer !important;
   }
 </style>
