@@ -196,6 +196,16 @@
           </template>
         </Column>
         <Column
+          field="description"
+          header="Description"
+          sortable
+          style="max-width: 16rem"
+        >
+          <template #body="slotProps">
+            <span class="line-clamp-2">{{ slotProps.data?.description }}</span>
+          </template>
+        </Column>
+        <Column
           field="level"
           header="Level"
           sortable
