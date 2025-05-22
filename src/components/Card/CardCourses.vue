@@ -30,7 +30,14 @@
 </template>
 
 <script setup>
-  import { ref, watch } from "vue";
+  import { ref, watch, onMounted } from "vue";
+
+  const props = defineProps({
+    fnMounted: {
+      type: Function,
+      required: true,
+    },
+  });
 
   const formatDateRange = (dateRange) => {
     if (!dateRange) return "-";
@@ -67,24 +74,15 @@
     };
   };
 
-  const courses = ref([
-    {
-      id: 0,
-      image: "https://picsum.photos/160/90",
-      title: "Course 1",
-      description: "Description 1",
-      date: ["01/01/2024", "01/02/2024"],
-    },
-    {
-      id: 1,
-      image: "https://picsum.photos/160/90",
-      title: "Course 2",
-      description: "Description 2",
-      date: ["01/01/2024", "01/02/2024"],
-    },
-  ]);
+  const courses = ref([]);
 
   const emit = defineEmits(["selectedCourses"]);
+
+  onMounted(() => {
+    props.fnMounted((items) => {
+      courses.value = [...items];
+    });
+  });
 
   watch(
     () => coveredCourses.value,

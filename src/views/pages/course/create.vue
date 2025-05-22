@@ -43,7 +43,7 @@
   // Course Data and Options
   const courseData = ref({
     id: 1,
-    title: "Introduction to 3D Modelling",
+    title: "",
     description: "",
     level: "",
     type: "",
@@ -230,6 +230,8 @@
   // Lifecycle Hooks
   onMounted(async () => {
     if (isUpdate.value) await getDetail();
+    else initContentCovered();
+
     await initEditor();
   });
 
@@ -326,6 +328,17 @@
     }
   };
 
+  const initContentCovered = () => {
+    contentCovered.value = [
+      {
+        id: 1,
+        level: 1,
+        title: title.value,
+        sub_contents: [],
+      },
+    ];
+  };
+
   const onCancel = () => {
     router.replace({
       name: COURSE.LIST,
@@ -333,11 +346,26 @@
   };
 
   const onSubmit = handleSubmit(async (values) => {
-    const data = {
+    const result = {
+      secureId: "12312312-12312312-123123123",
       ...values,
       contentCovered: contentCovered.value,
     };
-    console.log({ data });
+    console.log({ result });
+
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Course created successfully",
+      life: 3000,
+    });
+
+    router.replace({
+      name: COURSE.DETAIL,
+      params: {
+        secureId: result.id,
+      },
+    });
   });
 
   const saveData = () => {
@@ -551,7 +579,7 @@
       return;
     }
 
-    router.push(`/course/update/${secureId}`);
+    window.open(`/course/update/${secureId}`, "_blank");
   }
 
   function deleteLevel(levelIndex) {
@@ -613,6 +641,27 @@
       });
     }
   };
+
+  const getListCourse = (callback) => {
+    callback([
+      {
+        id: 0,
+        secureId: "123",
+        image: "https://picsum.photos/160/90",
+        title: "Course 1",
+        description: "Description 1",
+        date: ["01/01/2024", "01/02/2024"],
+      },
+      {
+        id: 1,
+        secureId: "123",
+        image: "https://picsum.photos/160/90",
+        title: "Course 2",
+        description: "Description 2",
+        date: ["01/01/2024", "01/02/2024"],
+      },
+    ]);
+  };
 </script>
 
 <template>
@@ -633,7 +682,9 @@
   </div>
 
   <div class="card mb-2">
-    <p class="font-semibold text-2xl mb-8">Create Course</p>
+    <p class="font-semibold text-2xl mb-8">
+      {{ isUpdate ? "Update Course" : "Create Course" }}
+    </p>
     <div class="flex flex-col gap-4 w-full">
       <FieldText
         className="flex flex-col flex-wrap gap-2 w-full"
@@ -844,7 +895,10 @@
     <div class="flex flex-col gap-4">
       <!-- For Level -->
       <template v-if="addLevelMode">
-        <CardCourses @selected-courses="handleSelectedCourses" />
+        <CardCourses
+          @selected-courses="handleSelectedCourses"
+          :fnMounted="getListCourse"
+        />
       </template>
 
       <!-- For Course -->
