@@ -86,6 +86,7 @@
       title: zod.string().min(1, { message: "Title is Required" }),
       description: zod.string().min(1, { message: "Description is Required" }),
       videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
+      imageUrl: zod.string().min(1, { message: "Image URL is Required" }),
       level: zod.union([zod.string().min(1, { message: "Level is Required" })]),
       type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
       content: zod
@@ -130,6 +131,7 @@
       level: courseData.value.level,
       type: courseData.value.type,
       videoUrl: courseData.value.videoUrl,
+      imageUrl: courseData.value.imageUrl,
     },
   });
 
@@ -272,6 +274,7 @@
           "title",
           "description",
           "videoUrl",
+          "imageUrl",
           "level",
           "type",
           "content",
@@ -286,6 +289,7 @@
           title: course?.title || "",
           description: course?.description || "",
           videoUrl: course?.videoUrl || "",
+          imageUrl: course?.imageUrl || "",
           level: course?.level || "",
           type: course?.type || "",
           content: course?.content || "",
@@ -697,6 +701,12 @@
         name="description"
         label="Description"
         :values="courseData.description"
+      />
+      <FieldText
+        className="flex flex-col flex-wrap gap-2 w-full"
+        name="imageUrl"
+        label="Image URL"
+        :values="courseData.imageUrl"
       />
       <div class="flex flex-col gap-4 w-full">
         <FieldText
