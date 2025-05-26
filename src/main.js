@@ -14,13 +14,15 @@ import "@/assets/styles.scss";
 import "@/assets/tailwind.css";
 
 async function prepareApp() {
-  if (import.meta.env.MODE === "development" || import.meta.env.DEV) {
-    const { worker } = await import("./mocks/browser");
+  // if (import.meta.env.MODE === "development" || import.meta.env.DEV) {
 
-    return worker.start();
-  }
+  // }
 
-  return Promise.resolve();
+  // return Promise.resolve();
+
+  const { worker } = await import("./mocks/browser");
+
+  return worker.start();
 }
 
 prepareApp().then(() => {
