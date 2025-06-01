@@ -6,37 +6,71 @@ import { COURSE } from "@/service/Instance/constants";
 export const handlers = [
   http.get(COURSE, async ({ request, params, cookies }) => {
     return Response.success(
-      {
-        courses: [
-          {
-            secureId: faker.string.uuid(),
-            id: faker.number.int({ min: 10, max: 10000 }),
-            title: faker.lorem.words(3),
-            description: faker.lorem.words(30),
-            level: faker.lorem.words(1),
-            type: faker.lorem.words(1),
-            status: faker.lorem.words(1),
-          },
-          {
-            secureId: faker.string.uuid(),
-            id: faker.number.int({ min: 10, max: 10000 }),
-            title: faker.lorem.words(3),
-            description: faker.lorem.words(30),
-            level: faker.lorem.words(1),
-            type: faker.lorem.words(1),
-            status: faker.lorem.words(1),
-          },
-          {
-            secureId: faker.string.uuid(),
-            id: faker.number.int({ min: 10, max: 10000 }),
-            title: faker.lorem.words(3),
-            description: faker.lorem.words(30),
-            level: faker.lorem.words(1),
-            type: faker.lorem.words(1),
-            status: faker.lorem.words(1),
-          },
-        ],
-      },
+      [
+        {
+          id: 1,
+          title: "Introduction to 3D Modelling Level 1",
+          description:
+            "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
+          imageUrl: "",
+          videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+          level: "intermediate",
+          type: "online",
+          content:
+            '{\n    "time": 1747830158223,\n    "blocks": [\n      {\n        "id": "1QOhnzcTYM",\n        "type": "paragraph",\n        "data": {\n          "text": "Course Overview"\n        }\n      },\n      {\n        "id": "mVYkvcMVBA",\n        "type": "list",\n        "data": {\n          "style": "unordered",\n          "items": [\n            "Introduction to 3D Modeling Concepts",\n            "Basic Geometry and Mesh Construction",\n            "Texturing and Materials",\n            "Lighting and Rendering"\n          ]\n        }\n      },\n      {\n        "id": "3whSxwZPTz",\n        "type": "list",\n        "data": {\n          "style": "ordered",\n          "items": [\n            "Week 1: Fundamentals",\n            "Week 2: Advanced Techniques",\n            "Week 3: Project Work",\n            "Week 4: Final Project"\n          ]\n        }\n      }\n    ],\n    "version": "2.31.0-rc.7"\n  }',
+          startDate: "2024-03-20T00:00:00.000Z",
+          endDate: "2024-06-20T00:00:00.000Z",
+          createdAt: "2025-05-25T12:45:07.176Z",
+          updatedAt: "2025-05-25T12:45:07.176Z",
+        },
+        {
+          id: 3,
+          title: "Introduction to 3D Modelling Level 3",
+          description:
+            "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
+          imageUrl: "",
+          videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+          level: "intermediate",
+          type: "online",
+          content:
+            '{\n    "time": 1747830158223,\n    "blocks": [\n      {\n        "id": "1QOhnzcTYM",\n        "type": "paragraph",\n        "data": {\n          "text": "Course Overview"\n        }\n      },\n      {\n        "id": "mVYkvcMVBA",\n        "type": "list",\n        "data": {\n          "style": "unordered",\n          "items": [\n            "Introduction to 3D Modeling Concepts",\n            "Basic Geometry and Mesh Construction",\n            "Texturing and Materials",\n            "Lighting and Rendering"\n          ]\n        }\n      },\n      {\n        "id": "3whSxwZPTz",\n        "type": "list",\n        "data": {\n          "style": "ordered",\n          "items": [\n            "Week 1: Fundamentals",\n            "Week 2: Advanced Techniques",\n            "Week 3: Project Work",\n            "Week 4: Final Project"\n          ]\n        }\n      }\n    ],\n    "version": "2.31.0-rc.7"\n  }',
+          startDate: "2024-03-20T00:00:00.000Z",
+          endDate: "2024-06-20T00:00:00.000Z",
+          createdAt: "2025-05-25T12:45:09.583Z",
+          updatedAt: "2025-05-25T12:45:09.583Z",
+        },
+        {
+          id: 2,
+          title: "Introduction to 3D Modelling Level 2",
+          description:
+            "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
+          imageUrl: "",
+          videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+          level: "intermediate",
+          type: "online",
+          content:
+            '{\n    "time": 1747830158223,\n    "blocks": [\n      {\n        "id": "1QOhnzcTYM",\n        "type": "paragraph",\n        "data": {\n          "text": "Course Overview"\n        }\n      },\n      {\n        "id": "mVYkvcMVBA",\n        "type": "list",\n        "data": {\n          "style": "unordered",\n          "items": [\n            "Introduction to 3D Modeling Concepts",\n            "Basic Geometry and Mesh Construction",\n            "Texturing and Materials",\n            "Lighting and Rendering"\n          ]\n        }\n      },\n      {\n        "id": "3whSxwZPTz",\n        "type": "list",\n        "data": {\n          "style": "ordered",\n          "items": [\n            "Week 1: Fundamentals",\n            "Week 2: Advanced Techniques",\n            "Week 3: Project Work",\n            "Week 4: Final Project"\n          ]\n        }\n      }\n    ],\n    "version": "2.31.0-rc.7"\n  }',
+          startDate: "2024-03-20T00:00:00.000Z",
+          endDate: "2024-06-20T00:00:00.000Z",
+          createdAt: "2025-05-25T12:45:09.119Z",
+          updatedAt: "2025-05-25T12:45:09.119Z",
+        },
+        {
+          id: 26,
+          title: "UPDATE GAES",
+          description: "Testing Create Course",
+          imageUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
+          videoUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
+          level: "intermediate",
+          type: "online",
+          content:
+            '{"time":1748162561085,"blocks":[{"id":"fFv57Qyk02","type":"paragraph","data":{"text":"123123213"}},{"id":"i5Jz5lsXdC","type":"header","data":{"text":"123123123","level":2}}],"version":"2.31.0-rc.7"}',
+          startDate: "2025-01-01T00:00:00.000Z",
+          endDate: "2025-01-02T00:00:00.000Z",
+          createdAt: "2025-05-25T18:43:39.684Z",
+          updatedAt: "2025-05-25T11:44:38.596Z",
+        },
+      ],
       {
         page: 1,
         limit: 10,
@@ -45,82 +79,136 @@ export const handlers = [
     );
   }),
   http.get(`${COURSE}/:id`, async ({ request, params, cookies }) => {
-    return Response.success({
-      course: {
-        title: "Introduction to 3D Modelling",
-        description:
-          "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
-        videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+    return Response.success([
+      {
+        id: 26,
+        title: "UPDATE GAES",
+        description: "Testing Create Course",
+        imageUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
+        videoUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
         level: "intermediate",
         type: "online",
         content:
-          '{"time":1747830158223,"blocks":[{"id":"1QOhnzcTYM","type":"paragraph","data":{"text":"123123123"}},{"id":"mVYkvcMVBA","type":"list","data":{"style":"unordered","meta":{},"items":[{"content":"Unordered List","meta":{},"items":[]}]}},{"id":"3whSxwZPTz","type":"list","data":{"style":"ordered","meta":{"counterType":"numeric"},"items":[{"content":"Ordered List","meta":{},"items":[]}]}},{"id":"RDkrebq7yD","type":"list","data":{"style":"checklist","meta":{},"items":[{"content":"Checked","meta":{"checked":false},"items":[]}]}},{"id":"EWOA4uCJtF","type":"code","data":{"code":"const onSubmit = handleSubmit(async (values) => {\\n    const data = {\\n      ...values,\\n      contentCovered: contentCovered.value,\\n    };\\n\\n    console.log({ data });\\n  });"}},{"id":"S_LiwaCFjR","type":"raw","data":{"html":"<template>\\n  <div :class=\\"props.className\\">\\n    <label :for=\\"props.name\\">{{ name }}</label>\\n    <Textarea\\n      :id=\\"props.name\\"\\n      v-model=\\"value\\"\\n      required=\\"true\\"\\n      autofocus\\n      :rows=\\"props.rows\\"\\n      :placeholder=\\"props.placeholder\\"\\n      :disabled=\\"props.disabled\\"\\n    />\\n    <small v-if=\\"meta.touched && !meta.valid\\" class=\\"text-red-500\\">{{\\n      errorMessage\\n    }}</small>\\n  </div>\\n</template>\\n"}},{"id":"Na_T23eG4_","type":"quote","data":{"text":"Quotes Quotes Quotes","caption":"This is the Caption","alignment":"left"}}],"version":"2.31.0-rc.7"}',
+          '{"time":1748162561085,"blocks":[{"id":"fFv57Qyk02","type":"paragraph","data":{"text":"123123213"}},{"id":"i5Jz5lsXdC","type":"header","data":{"text":"123123123","level":2}}],"version":"2.31.0-rc.7"}',
+        startDate: "2025-01-01T00:00:00.000Z",
+        endDate: "2025-01-02T00:00:00.000Z",
+        createdAt: "2025-05-25T18:43:39.684Z",
+        updatedAt: "2025-05-25T11:44:38.596Z",
         contentCovered: [
           {
-            id: 1,
+            id: 76,
+            parentCourseId: 26,
+            courseId: 26,
             level: 1,
-            title: "Introduction to 3D Modelling",
-            sub_contents: [
+            type: "PARENT",
+            courses: {
+              id: 26,
+              title: "UPDATE GAES",
+              description: "Testing Create Course",
+              imageUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
+              videoUrl: "https://www.youtube.com/watch?v=9zmTFEqkO1g&t=870s",
+              level: "intermediate",
+              type: "online",
+              content:
+                '{"time":1748162561085,"blocks":[{"id":"fFv57Qyk02","type":"paragraph","data":{"text":"123123213"}},{"id":"i5Jz5lsXdC","type":"header","data":{"text":"123123123","level":2}}],"version":"2.31.0-rc.7"}',
+              startDate: "2025-01-01T00:00:00.000Z",
+              endDate: "2025-01-02T00:00:00.000Z",
+              createdAt: "2025-05-25T18:43:39.684Z",
+              updatedAt: "2025-05-25T11:44:38.596Z",
+            },
+            subContents: [
               {
+                id: 37,
+                contentCoveredId: 76,
+                title: "Sub Content Title UPDATE",
                 number: "01",
-                title: "Understanding Digi-Doubles",
-                description:
-                  "Learn what Digi-Doubles are and their significance in modern VFX.",
-                is_open: false,
-                courses: [
+                description: "Sub Content Description",
+                subCourses: [
                   {
-                    title: "Understanding Digi-Doubles",
-                    description:
-                      "Learn what Digi-Doubles are and their significance in modern VFX.",
-                    is_checked: true,
+                    id: 94,
+                    subContentId: 37,
+                    title: "Sub-Course UPDATE",
+                    description: "Sub-Course Description",
                   },
                   {
-                    title: "Getting Started with Midjourney",
-                    description:
-                      "Learn what Digi-Doubles are and their significance in modern VFX.",
-                    is_checked: false,
+                    id: 95,
+                    subContentId: 37,
+                    title: "Sub-Course UPDATE 2",
+                    description: "Sub-Course 2 UPDATE Description\n",
                   },
                 ],
               },
               {
+                id: 38,
+                contentCoveredId: 76,
+                title: "Sub Content Title 2 xxxx",
                 number: "02",
-                title: "Getting Started with Midjourney",
-                description:
-                  "A brief introduction to using Midjourney for creating stunning visuals.",
-                is_open: false,
-                courses: [
+                description: "Sub Content Description 2 xxxx",
+                subCourses: [
                   {
-                    title: "Understanding Digi-Doubles",
-                    description:
-                      "Learn what Digi-Doubles are and their significance in modern VFX.",
-                    is_checked: true,
+                    id: 96,
+                    subContentId: 38,
+                    title: "Sub-Course ",
+                    description: "Sub-Course Description xxxx",
+                  },
+                  {
+                    id: 97,
+                    subContentId: 38,
+                    title: "Sub-Course 2",
+                    description: "Sub-Course Description xxxx",
                   },
                 ],
               },
             ],
           },
           {
-            id: 1,
-            secureId: faker.string.uuid(),
-            image: "https://picsum.photos/160/90",
-            title: "Course 2",
-            description: "Description 2",
-            date: ["01/01/2024", "01/02/2024"],
+            id: 77,
+            parentCourseId: 26,
+            courseId: 2,
             level: 2,
-            linked_course: "url/link/to/course/1",
+            type: "CHILDREN",
+            courses: {
+              id: 2,
+              title: "Introduction to 3D Modelling Level 2",
+              description:
+                "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
+              imageUrl: "",
+              videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+              level: "intermediate",
+              type: "online",
+              content:
+                '{\n    "time": 1747830158223,\n    "blocks": [\n      {\n        "id": "1QOhnzcTYM",\n        "type": "paragraph",\n        "data": {\n          "text": "Course Overview"\n        }\n      },\n      {\n        "id": "mVYkvcMVBA",\n        "type": "list",\n        "data": {\n          "style": "unordered",\n          "items": [\n            "Introduction to 3D Modeling Concepts",\n            "Basic Geometry and Mesh Construction",\n            "Texturing and Materials",\n            "Lighting and Rendering"\n          ]\n        }\n      },\n      {\n        "id": "3whSxwZPTz",\n        "type": "list",\n        "data": {\n          "style": "ordered",\n          "items": [\n            "Week 1: Fundamentals",\n            "Week 2: Advanced Techniques",\n            "Week 3: Project Work",\n            "Week 4: Final Project"\n          ]\n        }\n      }\n    ],\n    "version": "2.31.0-rc.7"\n  }',
+              startDate: "2024-03-20T00:00:00.000Z",
+              endDate: "2024-06-20T00:00:00.000Z",
+              createdAt: "2025-05-25T12:45:09.119Z",
+              updatedAt: "2025-05-25T12:45:09.119Z",
+            },
           },
           {
-            id: 0,
-            secureId: faker.string.uuid(),
-            image: "https://picsum.photos/160/90",
-            title: "Course 1",
-            description: "Description 1",
-            date: ["01/01/2024", "01/02/2024"],
+            id: 78,
+            parentCourseId: 26,
+            courseId: 3,
             level: 3,
-            linked_course: "url/link/to/course/0",
+            type: "CHILDREN",
+            courses: {
+              id: 3,
+              title: "Introduction to 3D Modelling Level 3",
+              description:
+                "This course provides a foundational understanding of 3D modelling, covering essential concepts, tools, and techniques used to create three-dimensional digital objects. Students will learn about basic geometry, mesh construction, modeling workflows, and software applications commonly used in the industry, such as Blender, Maya, or 3ds Max. Through hands-on projects, learners will explore object creation, modification, texturing, and rendering, gaining the skills needed to bring their ideas to life in a digital 3D environment. This course is ideal for beginners interested in animation, game design, visual effects, or product visualization.",
+              imageUrl: "",
+              videoUrl: "https://www.youtube.com/watch?v=Tc_JWD9NhKY",
+              level: "intermediate",
+              type: "online",
+              content:
+                '{\n    "time": 1747830158223,\n    "blocks": [\n      {\n        "id": "1QOhnzcTYM",\n        "type": "paragraph",\n        "data": {\n          "text": "Course Overview"\n        }\n      },\n      {\n        "id": "mVYkvcMVBA",\n        "type": "list",\n        "data": {\n          "style": "unordered",\n          "items": [\n            "Introduction to 3D Modeling Concepts",\n            "Basic Geometry and Mesh Construction",\n            "Texturing and Materials",\n            "Lighting and Rendering"\n          ]\n        }\n      },\n      {\n        "id": "3whSxwZPTz",\n        "type": "list",\n        "data": {\n          "style": "ordered",\n          "items": [\n            "Week 1: Fundamentals",\n            "Week 2: Advanced Techniques",\n            "Week 3: Project Work",\n            "Week 4: Final Project"\n          ]\n        }\n      }\n    ],\n    "version": "2.31.0-rc.7"\n  }',
+              startDate: "2024-03-20T00:00:00.000Z",
+              endDate: "2024-06-20T00:00:00.000Z",
+              createdAt: "2025-05-25T12:45:09.583Z",
+              updatedAt: "2025-05-25T12:45:09.583Z",
+            },
           },
         ],
       },
-    });
+    ]);
   }),
 ];
