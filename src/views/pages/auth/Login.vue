@@ -46,16 +46,15 @@
 
       const {
         status,
-        data: { data },
+        data: { user },
       } = await store.login(payload);
 
       if (status == 200) {
         store.$patch({
-          token: data.token,
-          userId: data?.user_id,
-          role: data?.user_role,
-          name: data?.name,
-          username: data?.username,
+          userId: user?.id,
+          role: user?.role,
+          name: user?.name,
+          username: user?.username,
         });
 
         if (route?.query?.redirect) {
