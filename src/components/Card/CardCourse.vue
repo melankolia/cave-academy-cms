@@ -1,13 +1,13 @@
 <template>
   <div
-    :key="item.secureId"
+    :key="item.id"
     class="flex flex-col sm:flex-row sm:items-center p-2.5 gap-4 hover:bg-green-950 transition-colors duration-200 cursor-pointer"
     @click="handleClick"
   >
     <div class="md:w-40 relative mr-2.5">
       <img
         class="block xl:block mx-auto rounded w-full hover:opacity-90 transition-opacity duration-200"
-        :src="item.image"
+        :src="item.imageUrl"
         :alt="item.title"
       />
     </div>
@@ -37,7 +37,7 @@
   </div>
 </template>
 <script setup>
-  import { computed, watch } from "vue";
+  import { computed, watch, onMounted } from "vue";
   import { useRouter, useRoute } from "vue-router";
 
   const router = useRouter();
@@ -47,17 +47,31 @@
       type: Object,
       required: true,
       default: () => ({
-        secureId: "",
-        image: "",
+        id: "",
+        imageUrl: "",
         title: "",
         description: "",
-        date: [],
+        startDate: "",
+        endDate: "",
       }),
     },
   });
 
+  onMounted(() => {
+    console.log(props.item);
+  });
+
   const date = computed(() => {
-    return props.item.date?.[0] + " - " + props.item.date?.[1];
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    };
+
+    return `${formatDate(props.item.startDate)} - ${formatDate(props.item.endDate)}`;
   });
 
   watch(
@@ -68,6 +82,6 @@
   );
 
   const handleClick = () => {
-    router.push(`/course/${props.item.secureId}`);
+    router.push(`/course/${props.item.id}`);
   };
 </script>

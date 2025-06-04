@@ -39,17 +39,18 @@
       loading.value = true;
 
       const payload = {
-        username: values.username,
+        name: values.username,
         password: values.password,
-        source: "web",
       };
 
       const {
-        status,
-        data: { user },
+        data: {
+          data: { user },
+          status,
+        },
       } = await store.login(payload);
 
-      if (status == 200) {
+      if (status == "success") {
         store.$patch({
           userId: user?.id,
           role: user?.role,
