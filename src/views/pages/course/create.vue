@@ -48,6 +48,8 @@
     level: "",
     type: "",
     content: "",
+    startDate: null,
+    endDate: null,
   });
 
   const courseType = ref([
@@ -82,43 +84,64 @@
 
   // Form Validation Schema
   const validationSchema = toTypedSchema(
-    zod.object({
-      title: zod.string().min(1, { message: "Title is Required" }),
-      description: zod.string().min(1, { message: "Description is Required" }),
-      videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
-      imageUrl: zod.string().min(1, { message: "Image URL is Required" }),
-      level: zod.union([zod.string().min(1, { message: "Level is Required" })]),
-      type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
-      content: zod
-        .string({
-          required_error: "Content is Required",
-          invalid_type_error: "Content must be a string",
-        })
-        .min(1, { message: "Content cannot be empty" })
-        .refine(
-          (val) => {
-            if (!val) return false;
-            try {
-              const parsed = JSON.parse(val);
-              return (
-                parsed &&
-                parsed.blocks &&
-                Array.isArray(parsed.blocks) &&
-                parsed.blocks.length > 0 &&
-                parsed.blocks.some(
-                  (block) =>
-                    block.data &&
-                    block.data.text &&
-                    block.data.text.trim().length > 0
-                )
-              );
-            } catch {
-              return false;
-            }
-          },
-          { message: "Please add some content to the editor" }
-        ),
-    })
+    zod
+      .object({
+        title: zod.string().min(1, { message: "Title is Required" }),
+        description: zod
+          .string()
+          .min(1, { message: "Description is Required" }),
+        videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
+        imageUrl: zod.string().min(1, { message: "Image URL is Required" }),
+        level: zod.union([
+          zod.string().min(1, { message: "Level is Required" }),
+        ]),
+        type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
+        startDate: zod
+          .date({
+            required_error: "Start Date is Required",
+            invalid_type_error: "Start Date must be a date",
+          })
+          .nullable(),
+        endDate: zod
+          .date({
+            required_error: "End Date is Required",
+            invalid_type_error: "End Date must be a date",
+          })
+          .nullable(),
+        content: zod
+          .string({
+            required_error: "Content is Required",
+            invalid_type_error: "Content must be a string",
+          })
+          .min(1, { message: "Content cannot be empty" })
+          .refine(
+            (val) => {
+              if (!val) return false;
+              try {
+                const parsed = JSON.parse(val);
+                return (
+                  parsed &&
+                  parsed.blocks &&
+                  Array.isArray(parsed.blocks) &&
+                  parsed.blocks.length > 0
+                );
+              } catch {
+                return false;
+              }
+            },
+            { message: "Please add some content to the editor" }
+          ),
+      })
+      .refine(
+        (data) => {
+          if (!data.startDate || !data.endDate) return true;
+          return data.endDate > data.startDate;
+        },
+        {
+          message: "End Date must be after Start Date",
+          path: ["endDate"], // This shows the error on the endDate field
+        }
+      )
   );
 
   // Form Setup
@@ -132,6 +155,8 @@
       type: courseData.value.type,
       videoUrl: courseData.value.videoUrl,
       imageUrl: courseData.value.imageUrl,
+      startDate: null,
+      endDate: null,
     },
   });
 
@@ -149,6 +174,9 @@
 
   const { value: level, errorMessage: levelError } = useField("level");
   const { value: type, errorMessage: typeError } = useField("type");
+  const { value: startDate, errorMessage: startDateError } =
+    useField("startDate");
+  const { value: endDate, errorMessage: endDateError } = useField("endDate");
 
   // Editor Setup
   const initEditor = async () => {
@@ -246,11 +274,14 @@
   // Watchers
   watch(title, (newTitle) => {
     courseData.value.title = newTitle;
-    const findIndex = contentCovered.value.findIndex(
-      (item) => item.id === courseData.value.id
-    );
-    if (findIndex !== -1) {
-      contentCovered.value[findIndex].title = newTitle;
+    contentCovered.value[0].title = newTitle;
+  });
+
+  // Add new watcher for startDate
+  watch(startDate, (newStartDate) => {
+    // If endDate is before the new startDate, reset endDate
+    if (endDate.value && newStartDate && endDate.value < newStartDate) {
+      endDate.value = null;
     }
   });
 
@@ -263,13 +294,10 @@
       const response = await courseService.details(secureId);
 
       const {
-        data: {
-          data: { course },
-          message,
-        },
+        data: { data: course, status },
       } = response;
 
-      if (message === "OK") {
+      if (status == "success") {
         const fields = [
           "title",
           "description",
@@ -283,6 +311,16 @@
           setFieldValue(field, course?.[field] || "");
         });
 
+        // Handle dates separately to ensure proper Date object conversion
+        setFieldValue(
+          "startDate",
+          course?.startDate ? new Date(course.startDate) : null
+        );
+        setFieldValue(
+          "endDate",
+          course?.endDate ? new Date(course.endDate) : null
+        );
+
         // Basic course information
         courseData.value = {
           id: course?.id || 0,
@@ -293,6 +331,8 @@
           level: course?.level || "",
           type: course?.type || "",
           content: course?.content || "",
+          startDate: course?.startDate ? new Date(course.startDate) : null,
+          endDate: course?.endDate ? new Date(course.endDate) : null,
         };
 
         // Handle content covered
@@ -335,10 +375,10 @@
   const initContentCovered = () => {
     contentCovered.value = [
       {
-        id: 1,
         level: 1,
         title: title.value,
-        sub_contents: [],
+        type: "PARENT",
+        subContents: [],
       },
     ];
   };
@@ -350,26 +390,80 @@
   };
 
   const onSubmit = handleSubmit(async (values) => {
-    const result = {
-      secureId: "12312312-12312312-123123123",
+    // Convert dates to ISO strings for API submission
+    // Check if contentCovered has required content
+    if (!contentCovered.value[0]?.subContents?.length) {
+      toast.add({
+        severity: "error",
+        summary: "Validation Error",
+        detail: "Please add at least one sub-content",
+        life: 3000,
+      });
+      return;
+    }
+
+    // Check if any subContent has courses
+    const hasAnyCourses = contentCovered.value[0].subContents.some(
+      (subContent) => subContent.subCourses?.length > 0
+    );
+
+    if (!hasAnyCourses) {
+      toast.add({
+        severity: "error",
+        summary: "Validation Error",
+        detail: "Please add at least one course to any sub-content",
+        life: 3000,
+      });
+      return;
+    }
+
+    const payload = {
       ...values,
+      startDate: values.startDate ? values.startDate.toISOString() : null,
+      endDate: values.endDate ? values.endDate.toISOString() : null,
       contentCovered: contentCovered.value,
     };
-    console.log({ result });
 
-    toast.add({
-      severity: "success",
-      summary: "Success",
-      detail: "Course created successfully",
-      life: 3000,
-    });
+    loadingSubmit.value = true;
+    await courseService
+      .create(payload)
+      .then(({ data: { data: course, status } }) => {
+        console.log({ status, id: course.id });
+        if (status == "success") {
+          toast.add({
+            severity: "success",
+            summary: "Success",
+            detail: "Course created successfully",
+            life: 3000,
+          });
 
-    router.replace({
-      name: COURSE.DETAIL,
-      params: {
-        secureId: result.id,
-      },
-    });
+          router.replace({
+            name: COURSE.DETAIL,
+            params: {
+              secureId: course.id,
+            },
+          });
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: course || "Failed to create course",
+            life: 3000,
+          });
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        toast.add({
+          severity: "error",
+          summary: "Error",
+          detail: "Failed to create course",
+          life: 3000,
+        });
+      })
+      .finally(() => {
+        loadingSubmit.value = false;
+      });
   });
 
   const saveData = () => {
@@ -386,12 +480,12 @@
     dialogMode.value = "add-sub-content";
     dialogData.value = {
       number: String(
-        contentCovered.value[levelIndex].sub_contents.length + 1
+        contentCovered.value[levelIndex].subContents.length + 1
       ).padStart(2, "0"),
       title: "",
       description: "",
       is_open: false,
-      courses: [],
+      subCourses: [],
       levelIndex,
     };
     dialogVisible.value = true;
@@ -400,7 +494,7 @@
   function addCourse(levelIndex, subContentIndex) {
     dialogMode.value = "add-course";
     dialogData.value = {
-      courses: [
+      subCourses: [
         {
           title: "",
           description: "",
@@ -416,7 +510,7 @@
   function editCourse(levelIndex, subContentIndex, courseIndex) {
     dialogMode.value = "edit-course";
     const course =
-      contentCovered.value[levelIndex].sub_contents[subContentIndex].courses[
+      contentCovered.value[levelIndex].subContents[subContentIndex].subCourses[
         courseIndex
       ];
     dialogData.value = {
@@ -430,15 +524,15 @@
   }
 
   function deleteCourse(levelIndex, subContentIndex, courseIndex) {
-    contentCovered.value[levelIndex].sub_contents[
+    contentCovered.value[levelIndex].subContents[
       subContentIndex
-    ].courses.splice(courseIndex, 1);
+    ].subCourses.splice(courseIndex, 1);
   }
 
   function editSubContent(levelIndex, subContentIndex) {
     dialogMode.value = "edit-sub-content";
     const subContent =
-      contentCovered.value[levelIndex].sub_contents[subContentIndex];
+      contentCovered.value[levelIndex].subContents[subContentIndex];
     dialogData.value = {
       number: subContent.number,
       title: subContent.title,
@@ -451,35 +545,34 @@
 
   function saveDialog() {
     if (addCourseMode.value) {
-      contentCovered.value[dialogData.value.levelIndex].sub_contents[
+      contentCovered.value[dialogData.value.levelIndex].subContents[
         dialogData.value.subContentIndex
-      ].courses.push({
+      ].subCourses.push({
         title: dialogData.value.title,
         description: dialogData.value.description,
         is_checked: false,
       });
     } else if (addSubContentMode.value) {
-      contentCovered.value[dialogData.value.levelIndex].sub_contents.push({
+      contentCovered.value[dialogData.value.levelIndex].subContents.push({
         number: dialogData.value.number,
         title: dialogData.value.title,
         description: dialogData.value.description,
         is_open: false,
-        courses: [],
+        subCourses: [],
       });
     } else if (editCourseMode.value) {
       const { levelIndex, subContentIndex, courseIndex, title, description } =
         dialogData.value;
       const course =
-        contentCovered.value[levelIndex].sub_contents[subContentIndex].courses[
-          courseIndex
-        ];
+        contentCovered.value[levelIndex].subContents[subContentIndex]
+          .subCourses[courseIndex];
       course.title = title;
       course.description = description;
     } else if (editSubContentMode.value) {
       const { levelIndex, subContentIndex, title, description } =
         dialogData.value;
       const subContent =
-        contentCovered.value[levelIndex].sub_contents[subContentIndex];
+        contentCovered.value[levelIndex].subContents[subContentIndex];
       subContent.title = title;
       subContent.description = description;
     }
@@ -489,8 +582,11 @@
   const handleSelectedCourses = (courses) => {
     courses = {
       ...courses,
+      courseId: courses.id,
+      type: "CHILDREN",
       level: contentCovered.value.length + 1,
-      linked_course: "url/link/to/course/" + courses.id,
+      image: courses.imageUrl,
+      linked_course: "/course/" + courses.id,
     };
     contentCovered.value.push(courses);
     dialogMode.value = "add-course";
@@ -504,15 +600,15 @@
       levelIndex,
       subContentIndex,
       title:
-        contentCovered.value[levelIndex].sub_contents[subContentIndex].title,
+        contentCovered.value[levelIndex].subContents[subContentIndex].title,
     };
   }
 
   function confirmDelete() {
     if (deleteData.value.type === "sub-content") {
       const { levelIndex, subContentIndex } = deleteData.value;
-      contentCovered.value[levelIndex].sub_contents.splice(subContentIndex, 1);
-      contentCovered.value[levelIndex].sub_contents.forEach(
+      contentCovered.value[levelIndex].subContents.splice(subContentIndex, 1);
+      contentCovered.value[levelIndex].subContents.forEach(
         (subContent, index) => {
           subContent.number = String(index + 1).padStart(2, "0");
         }
@@ -571,7 +667,7 @@
   }
 
   function editLevel(levelIndex) {
-    const secureId = contentCovered.value[levelIndex]?.secureId;
+    const secureId = contentCovered.value[levelIndex]?.id;
 
     if (!secureId) {
       toast.add({
@@ -646,25 +742,31 @@
     }
   };
 
-  const getListCourse = (callback) => {
-    callback([
-      {
-        id: 0,
-        secureId: "123",
-        image: "https://picsum.photos/160/90",
-        title: "Course 1",
-        description: "Description 1",
-        date: ["01/01/2024", "01/02/2024"],
-      },
-      {
-        id: 1,
-        secureId: "123",
-        image: "https://picsum.photos/160/90",
-        title: "Course 2",
-        description: "Description 2",
-        date: ["01/01/2024", "01/02/2024"],
-      },
-    ]);
+  const getListCourse = async (callback) => {
+    try {
+      loading.value = true;
+      const {
+        data: { data, status },
+      } = await courseService.list({
+        page: 1,
+        limit: 100,
+      });
+
+      if (status == "success") {
+        callback(data);
+      } else {
+        throw new Error("Failed to fetch data!");
+      }
+    } catch (error) {
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to fetch data!",
+        life: 3000,
+      });
+    } finally {
+      loading.value = false;
+    }
   };
 </script>
 
@@ -751,6 +853,41 @@
           }}</small>
         </div>
       </div>
+      <div class="grid grid-cols-12 gap-4">
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="startDate">Start Date</label>
+          <Calendar
+            id="startDate"
+            v-model="startDate"
+            dateFormat="dd/mm/yy"
+            placeholder="Select Start Date"
+            class="w-full"
+            :showIcon="true"
+            :minDate="new Date()"
+            :manualInput="false"
+          />
+          <small v-if="errors.startDate" class="text-red-500">{{
+            errors.startDate
+          }}</small>
+        </div>
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="endDate">End Date</label>
+          <Calendar
+            id="endDate"
+            v-model="endDate"
+            dateFormat="dd/mm/yy"
+            placeholder="Select End Date"
+            class="w-full"
+            :showIcon="true"
+            :minDate="startDate || new Date()"
+            :disabled="!startDate"
+            :manualInput="false"
+          />
+          <small v-if="errors.endDate" class="text-red-500">{{
+            errors.endDate
+          }}</small>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -778,11 +915,16 @@
             >
               <div class="flex items-center gap-4">
                 <i class="pi pi-bars text-gray-500"></i>
-                <span>Level {{ level.level }}: {{ level.title }}</span>
+                <span v-if="level.type == 'PARENT'">
+                  Level {{ level.level }}: {{ level.title }}
+                </span>
+                <span v-else>
+                  Level {{ level.level }}: {{ level.courses?.title }}
+                </span>
               </div>
               <div class="flex items-center gap-2 p-1">
                 <Button
-                  v-if="level.linked_course"
+                  v-if="level.type == 'CHILDREN'"
                   icon="pi pi-ellipsis-v"
                   text
                   size="small"
@@ -798,13 +940,13 @@
           </template>
 
           <!-- If the level is linked to a course -->
-          <template v-if="level.linked_course">
-            <CardCourse :item="level" />
+          <template v-if="level.type == 'CHILDREN'">
+            <CardCourse :item="level.courses" />
           </template>
 
           <template v-else>
             <div
-              v-for="(subContent, sIdx) in level.sub_contents"
+              v-for="(subContent, sIdx) in level.subContents"
               :key="sIdx"
               class="mb-4"
             >
@@ -823,7 +965,7 @@
                 <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
                 <ul class="pl-4">
                   <li
-                    v-for="(course, courseIdx) in subContent.courses"
+                    v-for="(course, courseIdx) in subContent.subCourses"
                     :key="courseIdx"
                     class="flex items-center gap-2 mb-2"
                   >
@@ -899,7 +1041,7 @@
     v-model:visible="dialogVisible"
     :header="handleDialogHeader"
     modal
-    :style="{ width: '640px' }"
+    :style="{ width: '720px' }"
   >
     <!-- Form Section -->
     <div class="flex flex-col gap-4">
@@ -935,7 +1077,7 @@
       </template>
 
       <!-- For Sub-Content -->
-      <template v-else-if="addSubContentMode">
+      <template v-else-if="addSubContentMode || editSubContentMode">
         <InputText
           v-model="dialogData.number"
           class="w-full"

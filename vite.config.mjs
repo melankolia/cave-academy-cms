@@ -7,7 +7,7 @@ import { defineConfig } from "vite";
 import dotenv from "dotenv";
 dotenv.config();
 
-const apiUrl = process.env.BASE_URL;
+const apiUrl = process.env.VITE_BASE_URL;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -27,9 +27,24 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/micro-api": "http://localhost:5100",
-      "/v1": apiUrl,
-      "/images": "http://localhost:5100",
+      "/micro-api": {
+        target: "http://localhost:5100",
+        changeOrigin: true,
+        secure: false,
+        credentials: true,
+      },
+      "/api/v1": {
+        target: apiUrl,
+        changeOrigin: true,
+        secure: false,
+        credentials: true,
+      },
+      "/images": {
+        target: "http://localhost:5100",
+        changeOrigin: true,
+        secure: false,
+        credentials: true,
+      },
     },
   },
 });

@@ -6,6 +6,8 @@
   import { onMounted, reactive, ref } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import { useConfirm } from "primevue/useconfirm";
+  import { useForm } from "vee-validate";
+  import Calendar from "primevue/calendar";
 
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
@@ -19,7 +21,6 @@
   import RawTool from "@editorjs/raw";
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
-  import { useForm } from "vee-validate";
 
   const router = useRouter();
   const route = useRoute();
@@ -35,6 +36,8 @@
     { label: "Course Detail" },
   ]);
 
+  const loadingDelete = ref(false);
+
   const courseData = ref({
     id: 1,
     title: "",
@@ -42,6 +45,10 @@
     level: "",
     type: "",
     content: "",
+    startDate: null,
+    endDate: null,
+    videoUrl: "",
+    imageUrl: "",
   });
 
   const courseType = ref([
@@ -106,16 +113,16 @@
       const response = await courseService.details(secureId);
 
       const {
-        data: {
-          data: { course },
-          message,
-        },
+        data: { data: course, status },
       } = response;
 
-      if (message === "OK") {
+      if (status == "success") {
         setFieldValue("title", course?.title || "");
         setFieldValue("description", course?.description || "");
         setFieldValue("videoUrl", course?.videoUrl || "");
+        setFieldValue("imageUrl", course?.imageUrl || "");
+        setFieldValue("startDate", course?.startDate || null);
+        setFieldValue("endDate", course?.endDate || null);
 
         // Basic course information
         courseData.value = {
@@ -123,9 +130,12 @@
           title: course?.title || "",
           description: course?.description || "",
           videoUrl: course?.videoUrl || "",
+          imageUrl: course?.imageUrl || "",
           level: course?.level || "",
           type: course?.type || "",
           content: course?.content || "",
+          startDate: course?.startDate ? new Date(course.startDate) : null,
+          endDate: course?.endDate ? new Date(course.endDate) : null,
         };
 
         // Handle content covered
@@ -171,7 +181,7 @@
 
   const onEdit = () => {
     router.push({
-      name: COURSE.EDIT,
+      name: COURSE.UPDATE,
       params: {
         secureId: route.params?.secureId,
       },
@@ -193,13 +203,34 @@
         severity: "danger",
       },
       accept: () => {
-        deleteProduct(item);
+        deleteCourse();
       },
     });
   };
 
-  const deleteProduct = (item) => {
-    console.log("Delete Course", item);
+  const deleteCourse = async () => {
+    const secureId = route.params?.secureId;
+    try {
+      loadingDelete.value = true;
+      const {
+        data: { status },
+      } = await courseService.delete(secureId);
+      if (status == "success") {
+        toast.add({
+          severity: "success",
+          summary: "Success",
+          detail: "Course deleted successfully",
+        });
+
+        router.replace({
+          name: COURSE.LIST,
+        });
+      }
+    } catch (error) {
+      console.error("Error in deleteCourse:", error);
+    } finally {
+      loadingDelete.value = false;
+    }
   };
 
   onMounted(async () => {
@@ -248,6 +279,13 @@
       <div class="flex flex-col gap-4 w-full">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
+          name="imageUrl"
+          label="Image URL"
+          :values="courseData.imageUrl"
+          disabled
+        />
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
           name="videoUrl"
           label="Video URL"
           :values="courseData.videoUrl"
@@ -285,6 +323,32 @@
           />
         </div>
       </div>
+      <div class="grid grid-cols-12 gap-4">
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="startDate">Start Date</label>
+          <Calendar
+            id="startDate"
+            v-model="courseData.startDate"
+            dateFormat="dd/mm/yy"
+            placeholder="Select Start Date"
+            class="w-full"
+            :showIcon="true"
+            disabled
+          />
+        </div>
+        <div class="flex flex-col col-span-6 gap-2">
+          <label for="endDate">End Date</label>
+          <Calendar
+            id="endDate"
+            v-model="courseData.endDate"
+            dateFormat="dd/mm/yy"
+            placeholder="Select End Date"
+            class="w-full"
+            :showIcon="true"
+            disabled
+          />
+        </div>
+      </div>
     </div>
   </div>
 
@@ -302,11 +366,13 @@
           <template #header>
             <div class="flex items-center justify-between w-full">
               <div class="flex items-center gap-4">
-                <span>Level {{ level.level }}: {{ level.title }}</span>
+                <span>
+                  Level {{ level.level }}: {{ level?.courses?.title }}
+                </span>
               </div>
               <div class="flex items-center gap-2 p-1">
                 <Chip
-                  v-if="!level.linked_course"
+                  v-if="level.type == 'PARENT'"
                   label="Current Course"
                   class="p-chip-success mr-3"
                 />
@@ -315,13 +381,13 @@
           </template>
 
           <!-- If the level is linked to a course -->
-          <template v-if="level.linked_course">
-            <CardCourse :item="level" />
+          <template v-if="level.type == 'CHILDREN'">
+            <CardCourse :item="level.courses" />
           </template>
 
           <template v-else>
             <div
-              v-for="(subContent, sIdx) in level.sub_contents"
+              v-for="(subContent, sIdx) in level.subContents"
               :key="sIdx"
               class="mb-4"
             >
@@ -332,7 +398,7 @@
                 <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
                 <ul class="pl-4">
                   <li
-                    v-for="(course, courseIdx) in subContent.courses"
+                    v-for="(course, courseIdx) in subContent.subCourses"
                     :key="courseIdx"
                     class="flex items-center gap-2 mb-2"
                   >
@@ -368,6 +434,7 @@
         @click="onEdit"
       />
       <Button
+        :loading="loadingDelete"
         label="Delete Course"
         icon="pi pi-trash"
         severity="danger"

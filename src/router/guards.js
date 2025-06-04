@@ -13,8 +13,6 @@ export const roleGuard = (allowedRoles) => {
 
     const userRole = authStore.getRole?.toUpperCase();
 
-    console.log(userRole, allowedRoles);
-
     if (!allowedRoles.includes(userRole)) {
       return next({ name: "access-denied" });
     }
