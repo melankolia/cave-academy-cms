@@ -30,21 +30,14 @@
   const getList = async () => {
     try {
       loading.value = true;
-      const {
-        data: {
-          result: { listData, totalElements },
-          message,
-        },
-      } = await newsService.list({
+      const { data } = await newsService.list({
         page: options.value.currentPage,
         limit: options.value.rowsPage,
       });
-      if (message == "OK") {
-        listData.map((e, id) => {
-          e.id = id;
-        });
-        newsData.value = [...listData];
-        totalRecords.value = totalElements;
+
+      if (data.status === "success") {
+        newsData.value = data.data;
+        totalRecords.value = data.data.length;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -75,7 +68,7 @@
     router.push({
       name: NEWS.UPDATE,
       params: {
-        secureId: item.secureId,
+        secureId: item.id,
       },
     });
   };
@@ -84,7 +77,7 @@
     router.push({
       name: NEWS.DETAIL,
       params: {
-        secureId: item.secureId,
+        secureId: item.id,
       },
     });
   };
@@ -93,16 +86,12 @@
   async function deleteNews() {
     try {
       loadingDelete.value = true;
-      const {
-        data: { result, message },
-      } = await newsService.delete(news.value?.secureId);
+      const { data } = await newsService.delete(news.value?.id);
 
-      if (message == "OK") {
-        newsData.value = [
-          ...newsData.value.filter(
-            (val) => val.secureId !== news.value?.secureId
-          ),
-        ];
+      if (data.status === "success") {
+        newsData.value = newsData.value.filter(
+          (val) => val.id !== news.value?.id
+        );
         news.value = {};
         deleteNewsDialog.value = false;
         toast.add({
@@ -112,7 +101,7 @@
           life: 3000,
         });
       } else {
-        console.error(result);
+        console.error(data);
         throw new Error("Failed to Delete News!");
       }
     } catch (error) {
@@ -130,6 +119,16 @@
   const handlePage = (e) => {
     options.value.rowsPage = e.rows;
     options.value.currentPage = e.page;
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   watch(
@@ -159,8 +158,12 @@
       <DataTable
         :loading="loading"
         :value="newsData"
-        dataKey="secureId"
+        dataKey="id"
         :filters="filters"
+        :paginator="true"
+        :rows="options.rowsPage"
+        :totalRecords="totalRecords"
+        @page="handlePage"
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
@@ -178,7 +181,7 @@
         </template>
         <template #empty> No News found. </template>
         <template #loading> Loading News data. Please wait. </template>
-
+        <Column field="id" header="No" sortable style="min-width: 2rem" />
         <Column field="title" header="Title" sortable style="min-width: 16rem">
           <template #body="slotProps">
             <Button
@@ -188,17 +191,43 @@
             />
           </template>
         </Column>
-        <Column header="Photo">
+        <Column
+          field="description"
+          header="Description"
+          style="min-width: 20rem"
+        >
+          <template #body="slotProps">
+            <div class="line-clamp-2">{{ slotProps.data?.description }}</div>
+          </template>
+        </Column>
+        <Column header="Image" style="min-width: 12rem">
           <template #body="slotProps">
             <img
-              :src="
-                slotProps.data?.photoVos[slotProps.data?.photoVos.length - 1]
-                  ?.photo || '/images/placeholder-image.png'
-              "
-              alt="sample content"
+              :src="slotProps.data?.imageUrl"
+              :alt="slotProps.data?.title"
               class="rounded"
               style="width: 128px"
             />
+          </template>
+        </Column>
+        <Column
+          field="author.name"
+          header="Author"
+          sortable
+          style="min-width: 12rem"
+        >
+          <template #body="slotProps">
+            <Tag>{{ slotProps.data?.author?.name }}</Tag>
+          </template>
+        </Column>
+        <Column
+          field="createdAt"
+          header="Created At"
+          sortable
+          style="min-width: 14rem"
+        >
+          <template #body="slotProps">
+            {{ formatDate(slotProps.data?.createdAt) }}
           </template>
         </Column>
         <Column :exportable="false" style="min-width: 12rem">
@@ -219,15 +248,6 @@
             />
           </template>
         </Column>
-
-        <template #footer>
-          <Paginator
-            @page="handlePage"
-            :rows="options.rowsPage"
-            :totalRecords="totalRecords"
-            :rowsPerPageOptions="[5, 10, 20]"
-          ></Paginator>
-        </template>
       </DataTable>
     </div>
 
@@ -260,3 +280,12 @@
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

@@ -41,7 +41,7 @@
           to: "/course",
         },
         // { label: "Boards", icon: "pi pi-fw pi-sitemap", to: "/board" },
-        // { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
+        { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
       ],
     },
   ]);

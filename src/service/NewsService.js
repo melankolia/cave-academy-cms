@@ -6,20 +6,20 @@ class NewsService extends Instance {
         return super.post(NEWS, data);
     }
 
-    update(data, secureId) {
-        return super.update(NEWS, secureId, data);
+    update(data, id) {
+        return super.update(NEWS, id, data);
     }
 
     list(params = null) {
         return super.query(NEWS, { params });
     }
 
-    details(secureId) {
-        return super.fetch(NEWS, secureId);
+    details(id) {
+        return super.fetch(NEWS, id);
     }
 
-    delete(secureId) {
-        return super.deleteSlug(NEWS, secureId);
+    delete(id) {
+        return super.deleteSlug(NEWS, id);
     }
 }
 
