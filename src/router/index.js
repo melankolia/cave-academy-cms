@@ -12,6 +12,7 @@ import {
   VISITATION,
   COURSE,
   EVENT,
+  WIKI,
 } from "./constants";
 import { roleGuard } from "./guards";
 import { ADMIN } from "./roles";
@@ -158,6 +159,31 @@ const router = createRouter({
               path: ":secureId",
               name: EVENT.DETAIL,
               component: () => import("@/views/pages/event/detail.vue"),
+            },
+          ],
+        },
+        {
+          path: "/wiki",
+          children: [
+            {
+              path: "",
+              name: WIKI.LIST,
+              component: () => import("@/views/pages/wiki/index.vue"),
+            },
+            {
+              path: "create",
+              name: WIKI.CREATE,
+              component: () => import("@/views/pages/wiki/create.vue"),
+            },
+            {
+              path: "update/:secureId",
+              name: WIKI.UPDATE,
+              component: () => import("@/views/pages/wiki/create.vue"),
+            },
+            {
+              path: ":secureId",
+              name: WIKI.DETAIL,
+              component: () => import("@/views/pages/wiki/detail.vue"),
             },
           ],
         },

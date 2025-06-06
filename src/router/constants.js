@@ -59,4 +59,11 @@ export const EVENT = {
   DETAIL: "event.detail",
 };
 
+export const WIKI = {
+  LIST: "wiki.list",
+  CREATE: "wiki.create",
+  UPDATE: "wiki.update",
+  DETAIL: "wiki.detail",
+};
+
 export const LOGIN = "login";
