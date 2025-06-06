@@ -192,13 +192,22 @@
             <span class="line-clamp-2">{{ slotProps.data?.description }}</span>
           </template>
         </Column>
-        <Column
-          field="level"
-          header="Level"
-          sortable
-          style="min-width: 16rem"
-        />
-        <Column field="type" header="Type" sortable style="min-width: 16rem" />
+        <Column field="level" header="Level" sortable style="min-width: 16rem">
+          <template #body="slotProps">
+            <Chip :label="slotProps.data?.level" class="capitalize" />
+          </template>
+        </Column>
+        <Column field="type" header="Type" sortable style="min-width: 16rem">
+          <template #body="slotProps">
+            <Tag
+              :value="slotProps.data?.type"
+              :severity="
+                slotProps.data?.type === 'online' ? 'success' : 'danger'
+              "
+              class="capitalize"
+            />
+          </template>
+        </Column>
         <Column :exportable="false" style="min-width: 12rem">
           <template #body="slotProps">
             <Button

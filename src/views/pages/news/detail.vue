@@ -317,12 +317,15 @@
         />
       </template>
     </Toolbar>
-    <div v-if="loading">
-      <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
-      <SkeletonCard />
-    </div>
-    <template v-else>
-      <div class="font-semibold text-2xl mt-8 mb-6">News Detail</div>
+  </div>
+
+  <div v-if="loading">
+    <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
+    <SkeletonCard />
+  </div>
+  <template v-else>
+    <div class="card mb-2">
+      <div class="font-semibold text-2xl mb-8">News Detail</div>
       <div class="flex flex-col gap-4 w-full">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
@@ -347,8 +350,6 @@
           rows="8"
           :disabled="disabled"
         />
-      </div>
-      <div class="flex flex-col gap-2">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="author"
@@ -357,12 +358,8 @@
           :disabled="disabled"
         />
       </div>
-    </template>
-  </div>
 
-  <template v-if="!loading">
-    <div class="card surface-ground py-5 mt-4">
-      <div class="flex flex-col">
+      <div class="flex flex-col py-5 mt-4">
         <div class="mb-2">Content</div>
         <div id="editorjs" class="editor-wrapper"></div>
         <small v-if="contentError" class="text-red-500">{{

@@ -299,12 +299,15 @@
         />
       </template>
     </Toolbar>
-    <div v-if="loading">
-      <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
-      <SkeletonCard />
-    </div>
-    <template v-else>
-      <div class="font-semibold text-2xl mt-8 mb-6">
+  </div>
+
+  <div v-if="loading">
+    <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
+    <SkeletonCard />
+  </div>
+  <template v-else>
+    <div class="card mb-2">
+      <div class="font-semibold text-2xl mb-8">
         {{ isUpdate ? "Update" : "Create" }} News
       </div>
       <div class="flex flex-col gap-4 w-full">
@@ -354,39 +357,41 @@
           rows="8"
         />
       </div>
-    </template>
-  </div>
-
-  <div class="card surface-ground py-5 mt-4">
-    <div class="flex flex-col">
-      <div class="mb-2">Content</div>
-      <div id="editorjs" class="editor-wrapper"></div>
-      <small v-if="contentError" class="text-red-500">{{ contentError }}</small>
     </div>
-  </div>
 
-  <div class="card surface-ground py-5 mt-4">
-    <div class="flex justify-end px-4">
-      <div class="flex gap-3">
-        <Button
-          label="Cancel"
-          icon="pi pi-times"
-          severity="secondary"
-          class="w-[130px]"
-          outlined
-          @click="onCancel"
-        />
-        <Button
-          label="Save News"
-          icon="pi pi-check"
-          severity="primary"
-          class="w-[130px]"
-          @click="saveData"
-          :loading="loadingSubmit"
-        />
+    <div class="card surface-ground py-5 mt-4">
+      <div class="flex flex-col">
+        <div class="mb-2">Content</div>
+        <div id="editorjs" class="editor-wrapper"></div>
+        <small v-if="contentError" class="text-red-500">{{
+          contentError
+        }}</small>
       </div>
     </div>
-  </div>
+
+    <div class="card surface-ground py-5 mt-4">
+      <div class="flex justify-end px-4">
+        <div class="flex gap-3">
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            severity="secondary"
+            class="w-[130px]"
+            outlined
+            @click="onCancel"
+          />
+          <Button
+            label="Save News"
+            icon="pi pi-check"
+            severity="primary"
+            class="w-[130px]"
+            @click="saveData"
+            :loading="loadingSubmit"
+          />
+        </div>
+      </div>
+    </div>
+  </template>
 </template>
 
 <style scoped>

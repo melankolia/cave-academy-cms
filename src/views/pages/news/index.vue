@@ -160,10 +160,6 @@
         :value="newsData"
         dataKey="id"
         :filters="filters"
-        :paginator="true"
-        :rows="options.rowsPage"
-        :totalRecords="totalRecords"
-        @page="handlePage"
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
@@ -217,7 +213,7 @@
           style="min-width: 12rem"
         >
           <template #body="slotProps">
-            <Tag>{{ slotProps.data?.author?.name }}</Tag>
+            <Chip>{{ slotProps.data?.author?.name }}</Chip>
           </template>
         </Column>
         <Column
@@ -248,6 +244,14 @@
             />
           </template>
         </Column>
+        <template #footer>
+          <Paginator
+            @page="handlePage"
+            :rows="options.rowsPage"
+            :totalRecords="totalRecords"
+            :rowsPerPageOptions="[5, 10, 20]"
+          ></Paginator>
+        </template>
       </DataTable>
     </div>
 
