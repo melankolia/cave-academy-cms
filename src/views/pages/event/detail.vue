@@ -1,7 +1,7 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
-  import { NEWS } from "@/router/constants";
-  import NewsService from "@/service/NewsService";
+  import { EVENT } from "@/router/constants";
+  import EventService from "@/service/EventService";
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
   import { useField, useForm } from "vee-validate";
@@ -24,7 +24,7 @@
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
 
-  const newsData = ref({
+  const eventData = ref({
     title: "",
     content: "",
     imageUrl: "",
@@ -37,10 +37,21 @@
     },
   });
 
+  const courseType = ref([
+    { label: "Offline", value: "offline" },
+    { label: "Online", value: "online" },
+  ]);
+
+  const courseLevel = ref([
+    { label: "Beginner", value: "beginner" },
+    { label: "Intermediate", value: "intermediate" },
+    { label: "Expert", value: "expert" },
+  ]);
+
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
-  const newsService = reactive(new NewsService());
+  const eventService = reactive(new EventService());
   const loading = ref(false);
   const editorInstance = ref(null);
   const disabled = ref(true);
@@ -106,8 +117,8 @@
   const breadcrumbHome = ref({ icon: "pi pi-home", to: "/" });
 
   const breadcrumbItems = ref([
-    { label: "News List", url: "/news" },
-    { label: "News Detail" },
+    { label: "Event List", url: "/event" },
+    { label: "Event Detail" },
   ]);
 
   // Editor Setup
@@ -146,7 +157,7 @@
         embed: Embed,
         quote: Quote,
       },
-      data: newsData.value.content ? JSON.parse(newsData.value.content) : {},
+      data: eventData.value.content ? JSON.parse(eventData.value.content) : {},
       onChange: async () => {
         if (disabled.value) return;
         try {
@@ -171,11 +182,13 @@
       loading.value = true;
       const id = route.params?.secureId;
 
-      const { data } = await newsService.details(id);
+      const { data } = await eventService.details(id);
       if (data.status === "success") {
         const result = data.data;
+
+        result.type = result.isOnline ? "online" : "offline";
         setImageUrl(result.imageUrl);
-        newsData.value = result;
+        eventData.value = result;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -202,7 +215,7 @@
     if (event?.xhr?.status == 200) {
       try {
         const { result } = await JSON.parse(event.xhr.response);
-        newsData.value.imageUrl = result.imageUrl;
+        eventData.value.imageUrl = result.imageUrl;
         setImageUrl(result.imageUrl);
 
         toast.add({
@@ -232,19 +245,19 @@
   };
 
   const handleImageRemove = () => {
-    newsData.value.imageUrl = null;
+    eventData.value.imageUrl = null;
     setImageUrl(null);
   };
 
   const onCancel = () => {
     router.replace({
-      name: NEWS.LIST,
+      name: EVENT.LIST,
     });
   };
 
   const onEdit = () => {
     router.push({
-      name: NEWS.UPDATE,
+      name: EVENT.UPDATE,
       params: {
         secureId: route.params.secureId,
       },
@@ -253,7 +266,7 @@
 
   const onDelete = () => {
     confirm.require({
-      message: `Are you sure you want to delete ${newsData.value.title}?`,
+      message: `Are you sure you want to delete ${eventData.value.title}?`,
       header: "Delete Confirmation",
       icon: "pi pi-exclamation-triangle",
       rejectProps: {
@@ -266,36 +279,36 @@
         severity: "danger",
       },
       accept: () => {
-        deleteNews();
+        deleteEvent();
       },
     });
   };
 
-  async function deleteNews() {
+  async function deleteEvent() {
     try {
       loadingDelete.value = true;
-      const { data } = await newsService.delete(route.params?.secureId);
+      const { data } = await eventService.delete(route.params?.secureId);
 
       if (data.status === "success") {
         router.replace({
-          name: NEWS.LIST,
+          name: EVENT.LIST,
         });
 
         toast.add({
           severity: "success",
           summary: "Successful",
-          detail: "News Deleted",
+          detail: "Event Deleted",
           life: 3000,
         });
       } else {
         console.error(data);
-        throw new Error("Failed to Delete News!");
+        throw new Error("Failed to Delete Event!");
       }
     } catch (error) {
       toast.add({
         severity: "error",
         summary: "Error Data",
-        detail: "Failed to Delete News!",
+        detail: "Failed to Delete Event!",
         life: 3000,
       });
     } finally {
@@ -325,20 +338,20 @@
   </div>
   <template v-else>
     <div class="card mb-2">
-      <div class="font-semibold text-2xl mb-8">News Detail</div>
+      <div class="font-semibold text-2xl mb-8">Event Detail</div>
       <div class="flex flex-col gap-4 w-full">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="title"
           label="Title"
-          :values="newsData.title"
+          :values="eventData.title"
           :disabled="disabled"
         />
         <div class="flex flex-col">
           <div class="mb-2">Image</div>
           <img
-            :src="newsData.imageUrl"
-            :alt="newsData.title"
+            :src="eventData.imageUrl"
+            :alt="eventData.title"
             class="w-full max-w-md rounded-lg shadow-lg mb-4"
           />
         </div>
@@ -346,7 +359,7 @@
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
-          :values="newsData.description"
+          :values="eventData.description"
           rows="8"
           :disabled="disabled"
         />
@@ -354,16 +367,73 @@
           className="flex flex-col flex-wrap gap-2 w-full"
           name="author"
           label="Author"
-          :values="`${newsData.author.name} (${newsData.author.role})`"
+          :values="`${eventData.author.name} (${eventData.author.role})`"
           :disabled="disabled"
         />
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseLevel">Level</label>
+            <Select
+              id="courseLevel"
+              v-model="eventData.level"
+              display="chip"
+              :options="courseLevel"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Level"
+              class="w-full"
+              disabled
+            />
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseType">Type</label>
+            <SelectButton
+              id="courseType"
+              v-model="eventData.type"
+              :options="courseType"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Type"
+              class="w-full"
+              disabled
+            />
+          </div>
+        </div>
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="startDate">Start Date</label>
+            <Calendar
+              id="startDate"
+              v-model="eventData.startDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select Start Date"
+              class="w-full"
+              :showIcon="true"
+              disabled
+            />
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="endDate">End Date</label>
+            <Calendar
+              id="endDate"
+              v-model="eventData.endDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select End Date"
+              class="w-full"
+              :showIcon="true"
+              disabled
+            />
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="card surface-ground mt-4">
       <div class="flex flex-col">
         <div class="mb-2">
-          <p class="font-semibold text-2xl mb-8">About News</p>
+          <p class="font-semibold text-2xl mb-8">About Event</p>
         </div>
         <div id="editorjs" class="editor-wrapper"></div>
         <small v-if="contentError" class="text-red-500">{{
@@ -384,7 +454,7 @@
             @click="onCancel"
           />
           <Button
-            label="Edit News"
+            label="Edit Event"
             icon="pi pi-pencil"
             severity="primary"
             class="dark:text-white"
@@ -392,7 +462,7 @@
           />
           <Button
             :loading="loadingDelete"
-            label="Delete News"
+            label="Delete Event"
             icon="pi pi-trash"
             severity="danger"
             class="dark:text-white"

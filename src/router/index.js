@@ -11,6 +11,7 @@ import {
   PRODUCT_STOCK,
   VISITATION,
   COURSE,
+  EVENT,
 } from "./constants";
 import { roleGuard } from "./guards";
 import { ADMIN } from "./roles";
@@ -132,6 +133,31 @@ const router = createRouter({
               path: ":secureId",
               name: COURSE.DETAIL,
               component: () => import("@/views/pages/course/detail.vue"),
+            },
+          ],
+        },
+        {
+          path: "/event",
+          children: [
+            {
+              path: "",
+              name: EVENT.LIST,
+              component: () => import("@/views/pages/event/index.vue"),
+            },
+            {
+              path: "create",
+              name: EVENT.CREATE,
+              component: () => import("@/views/pages/event/create.vue"),
+            },
+            {
+              path: "update/:secureId",
+              name: EVENT.UPDATE,
+              component: () => import("@/views/pages/event/create.vue"),
+            },
+            {
+              path: ":secureId",
+              name: EVENT.DETAIL,
+              component: () => import("@/views/pages/event/detail.vue"),
             },
           ],
         },

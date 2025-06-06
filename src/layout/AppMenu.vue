@@ -42,6 +42,7 @@
         },
         // { label: "Boards", icon: "pi pi-fw pi-sitemap", to: "/board" },
         { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
+        { label: "Event", icon: "pi pi-fw pi-calendar", to: "/event" },
       ],
     },
   ]);

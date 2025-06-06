@@ -1,6 +1,7 @@
 const API_VERSION = "/api/v1";
 
 export const NEWS = `${API_VERSION}/news`;
+export const EVENT = `${API_VERSION}/event`;
 export const BOARD = `${API_VERSION}/board`;
 export const POSITION = `${API_VERSION}/position`;
 export const SALES_MANAGEMENT = `${API_VERSION}/sales-management`;

@@ -52,4 +52,11 @@ export const COURSE = {
   DETAIL: "course.detail",
 };
 
+export const EVENT = {
+  LIST: "event.list",
+  CREATE: "event.create",
+  UPDATE: "event.update",
+  DETAIL: "event.detail",
+};
+
 export const LOGIN = "login";
