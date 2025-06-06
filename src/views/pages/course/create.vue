@@ -95,7 +95,14 @@
         level: zod.union([
           zod.string().min(1, { message: "Level is Required" }),
         ]),
-        type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
+        type: zod
+          .union([
+            zod.string().min(1, { message: "Type is Required" }),
+            zod.null(),
+          ])
+          .refine((val) => val !== null, {
+            message: "Type is Required",
+          }),
         startDate: zod
           .date({
             required_error: "Start Date is Required",
