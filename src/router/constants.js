@@ -21,6 +21,13 @@ export const SALES_MANAGEMENT = {
   DETAIL: "sales_management.detail",
 };
 
+export const STUDENT_MANAGEMENT = {
+  LIST: "student.list",
+  CREATE: "student.create",
+  UPDATE: "student.update",
+  DETAIL: "student.detail",
+};
+
 export const PRODUCT = {
   LIST: "product.list",
   CREATE: "product.create",

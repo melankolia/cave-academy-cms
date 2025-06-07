@@ -8,6 +8,14 @@
     values: String,
     className: String,
     placeHolder: String,
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    readOnly: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const { value, errorMessage, meta } = useField(() => props.name, undefined, {
@@ -19,6 +27,8 @@
   <div :class="className">
     <label :for="props.name">{{ label }}</label>
     <Password
+      :disabled="props.disabled"
+      :readonly="props.readOnly"
       :id="props.name"
       type="password"
       v-model="value"
@@ -27,6 +37,10 @@
       fluid
       :feedback="false"
       :invalid="meta.touched && !meta.valid"
+      :class="[
+        { 'border-gray-300': props.readOnly },
+        { 'readonly-input': props.readOnly },
+      ]"
     />
     <small v-if="meta.touched && !meta.valid" class="text-red-500">{{
       errorMessage

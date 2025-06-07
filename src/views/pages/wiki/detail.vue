@@ -239,6 +239,15 @@
       loadingDeleteWiki.value = false;
     }
   };
+
+  const onEdit = () => {
+    router.push({
+      name: WIKI.UPDATE,
+      params: {
+        secureId: route.params?.secureId,
+      },
+    });
+  };
 </script>
 
 <template>
@@ -347,6 +356,13 @@
             class="w-[130px]"
             outlined
             @click="onCancel"
+          />
+          <Button
+            label="Edit Topic"
+            icon="pi pi-pencil"
+            severity="primary"
+            class="dark:text-white"
+            @click="onEdit"
           />
           <Button
             :loading="loadingDelete"

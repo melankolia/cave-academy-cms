@@ -13,6 +13,7 @@ import {
   COURSE,
   EVENT,
   WIKI,
+  STUDENT_MANAGEMENT,
 } from "./constants";
 import { roleGuard } from "./guards";
 import { ADMIN } from "./roles";
@@ -33,42 +34,33 @@ const router = createRouter({
           component: () => import("@/views/Dashboard.vue"),
         },
         {
-          path: "/sales-management",
+          path: "/student-management",
           children: [
             {
               path: "",
-              name: SALES_MANAGEMENT.LIST,
+              name: STUDENT_MANAGEMENT.LIST,
               component: () =>
-                import("@/views/pages/sales-management/index.vue"),
+                import("@/views/pages/student-management/index.vue"),
             },
-          ],
-        },
-        {
-          path: "/product-master",
-          children: [
             {
-              path: "",
-              name: PRODUCT.LIST,
+              path: "create",
+              name: STUDENT_MANAGEMENT.CREATE,
               component: () =>
-                import("@/views/pages/product/product-master/index.vue"),
+                import("@/views/pages/student-management/create.vue"),
             },
-          ],
-        },
-        {
-          path: "/product-management",
-          children: [
             {
-              path: "",
-              name: PRODUCT_STOCK.LIST,
+              path: "update/:secureId",
+              name: STUDENT_MANAGEMENT.UPDATE,
               component: () =>
-                import("@/views/pages/product/product-stock/index.vue"),
+                import("@/views/pages/student-management/create.vue"),
+            },
+            {
+              path: ":secureId",
+              name: STUDENT_MANAGEMENT.DETAIL,
+              component: () =>
+                import("@/views/pages/student-management/detail.vue"),
             },
           ],
-        },
-        {
-          path: "/board",
-          name: BOARD.LIST,
-          component: () => import("@/views/pages/board/index.vue"),
         },
         {
           path: "/news",
@@ -92,23 +84,6 @@ const router = createRouter({
               path: ":secureId",
               name: NEWS.DETAIL,
               component: () => import("@/views/pages/news/detail.vue"),
-            },
-          ],
-        },
-        {
-          path: "/visitation",
-          children: [
-            {
-              path: "",
-              name: VISITATION.LIST,
-              component: () => import("@/views/pages/visitation/index.vue"),
-              beforeEnter: roleGuard([ADMIN]),
-            },
-            {
-              path: ":id",
-              name: VISITATION.DETAIL,
-              component: () => import("@/views/pages/visitation/detail.vue"),
-              beforeEnter: roleGuard([ADMIN]),
             },
           ],
         },

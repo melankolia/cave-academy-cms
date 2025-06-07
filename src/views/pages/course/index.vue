@@ -208,7 +208,7 @@
             />
           </template>
         </Column>
-        <Column :exportable="false" style="min-width: 12rem">
+        <Column header="Action" style="min-width: 12rem">
           <template #body="slotProps">
             <Button
               icon="pi pi-pencil"

@@ -7,6 +7,7 @@ export const POSITION = `${API_VERSION}/position`;
 export const SALES_MANAGEMENT = `${API_VERSION}/sales-management`;
 export const PRODUCT = `${API_VERSION}/products`;
 export const PRODUCT_STOCK = `${API_VERSION}/product-stock`;
+export const STUDENT = `${API_VERSION}/student`;
 
 export const LOGIN = `${API_VERSION}/auth/login`;
 export const LOGOUT = `${API_VERSION}/auth/logout`;
