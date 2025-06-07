@@ -151,8 +151,10 @@
         <DataTable
           :loading="loadingActiveStudents"
           :value="activeStudentsList"
-          :rows="5"
           responsiveLayout="scroll"
+          paginator
+          :rows="10"
+          :rowsPerPageOptions="[10, 20, 50, 100]"
         >
           <template #empty> No Active Students found. </template>
           <template #loading>
@@ -174,22 +176,14 @@
           </Column>
           <Column
             field="activeStudentCount"
-            header="Active Student Count"
+            header="Active Student"
             sortable
-            style="min-width: 16rem"
+            style="max-width: 6rem"
           >
             <template #body="slotProps">
               {{ slotProps.data?.activeStudentCount }}
             </template>
           </Column>
-          <template #footer>
-            <Paginator
-              @page="handlePage"
-              :rows="options.rowsPage"
-              :totalRecords="totalRecords"
-              :rowsPerPageOptions="[5, 10, 20]"
-            ></Paginator>
-          </template>
         </DataTable>
       </div>
     </div>
