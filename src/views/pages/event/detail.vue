@@ -211,44 +211,6 @@
     }
   });
 
-  const onUpload = async (event) => {
-    if (event?.xhr?.status == 200) {
-      try {
-        const { result } = await JSON.parse(event.xhr.response);
-        eventData.value.imageUrl = result.imageUrl;
-        setImageUrl(result.imageUrl);
-
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "File Uploaded",
-          life: 3000,
-        });
-      } catch (error) {
-        toast.add({
-          severity: "error",
-          summary: "Upload Failed",
-          detail: "Image Upload Failed",
-          life: 3000,
-        });
-      }
-    }
-  };
-
-  const handleImageError = () => {
-    toast.add({
-      severity: "error",
-      summary: "Upload Failed",
-      detail: "Image Upload Failed",
-      life: 3000,
-    });
-  };
-
-  const handleImageRemove = () => {
-    eventData.value.imageUrl = null;
-    setImageUrl(null);
-  };
-
   const onCancel = () => {
     router.replace({
       name: EVENT.LIST,

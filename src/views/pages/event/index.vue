@@ -215,14 +215,11 @@
           <template #body="slotProps">
             <Tag
               :value="slotProps.data?.isOnline ? 'online' : 'offline'"
-              :severity="
-                slotProps.data?.isOnline ? 'success' : 'danger'
-              "
+              :severity="slotProps.data?.isOnline ? 'success' : 'danger'"
               class="capitalize"
             />
           </template>
         </Column>
-        <Column :expor
         <Column
           field="author.name"
           header="Author"
