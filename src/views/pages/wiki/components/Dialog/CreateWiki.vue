@@ -2,7 +2,7 @@
   <Dialog
     v-model:visible="visibleCombined"
     modal
-    :header="isEdit ? 'Edit Wiki' : 'Create Wiki'"
+    header="Wiki Detail"
     :style="{ minWidth: '55%', maxWidth: '90%' }"
     :closable="false"
   >
@@ -14,6 +14,7 @@
             name="title"
             label="Title"
             :values="values.title"
+            disabled
           />
           <FieldTextArea
             className="flex flex-col flex-wrap gap-2 w-full"
@@ -21,19 +22,26 @@
             label="Description"
             :values="values.description"
             rows="4"
+            disabled
           />
-          <FieldText
-            className="flex flex-col flex-wrap gap-2 w-full"
-            name="imageUrl"
-            label="Image URL"
-            :values="values.imageUrl"
-          />
-          <FieldText
-            className="flex flex-col flex-wrap gap-2 w-full"
-            name="thumbnailUrl"
-            label="Thumbnail URL"
-            :values="values.thumbnailUrl"
-          />
+          <div class="flex flex-col gap-2">
+            <div class="mb-2">Image</div>
+            <img
+              :src="values.imageUrl"
+              :alt="values.title"
+              class="rounded"
+              style="width: 100%"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <div class="mb-2">Thumbnail</div>
+            <img
+              :src="values.thumbnailUrl"
+              :alt="values.title"
+              class="rounded"
+              style="width: 100%"
+            />
+          </div>
         </div>
       </Fieldset>
 
@@ -53,14 +61,6 @@
           severity="danger"
           class="w-[130px]"
           @click="onCancel"
-        />
-        <Button
-          type="button"
-          icon="pi pi-check"
-          label="Save"
-          class="w-[130px]"
-          @click="onSubmit"
-          :loading="isSubmitting"
         />
       </div>
     </div>
@@ -99,12 +99,16 @@
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
 
-  const emit = defineEmits(["onCancel", "onSubmit", "update:visible"]);
+  const emit = defineEmits([
+    "onCancel",
+    "onSubmit",
+    "update:visible",
+    "onUpdate",
+  ]);
 
   const toast = useToast();
-
   const isEdit = computed(() => {
-    return !!props.selected;
+    return Object.keys(props.selected || {}).length > 0;
   });
 
   const validationSchema = toTypedSchema(
@@ -181,7 +185,7 @@
     editorInstance.value = new EditorJS({
       holder: "editorjs",
       placeholder: "Let's write an awesome story!",
-      readOnly: false,
+      readOnly: true,
       autofocus: true,
       tools: {
         header: Header,
@@ -236,31 +240,8 @@
     emit("onCancel", false);
   };
 
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      const payload = {
-        title: values.title,
-        description: values.description,
-        thumbnailUrl: values.thumbnailUrl,
-        imageUrl: values.imageUrl,
-        content: values.content,
-      };
-
-      emit("onSubmit", payload);
-    } catch (error) {
-      console.error("Error in onSubmit:", error);
-      toast.add({
-        severity: "error",
-        summary: "Error Data",
-        detail: "Failed to fetch data!",
-        life: 3000,
-      });
-    }
-  });
-
   watch(visibleCombined, (newVal) => {
     if (newVal) {
-      initEditor();
       if (isEdit.value) {
         setValues({
           title: props.selected.title,
@@ -269,8 +250,13 @@
           imageUrl: props.selected.imageUrl,
           content: props.selected.content,
         });
+
+        setValueContent(props.selected.content);
       }
+
+      initEditor();
     } else {
+      resetForm();
       editorInstance.value.destroy();
     }
   });

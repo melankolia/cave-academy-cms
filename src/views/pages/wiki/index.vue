@@ -1,6 +1,7 @@
 <script setup>
   import { WIKI } from "@/router/constants";
   import WikiService from "@/service/WikiService";
+  import TopicService from "@/service/TopicService";
   import { FilterMatchMode } from "@primevue/core/api";
   import { useToast } from "primevue/usetoast";
   import { onMounted, reactive, ref, watch } from "vue";
@@ -8,6 +9,8 @@
 
   const router = useRouter();
   const wikiService = reactive(new WikiService());
+  const topicService = reactive(new TopicService());
+
   const toast = useToast();
   const wikiData = ref();
   const deleteWikiDialog = ref(false);
@@ -61,8 +64,8 @@
     });
   };
 
-  function confirmDeleteWiki(wiki) {
-    wiki.value = wiki;
+  function confirmDeleteWiki(data) {
+    wiki.value = { ...data };
     deleteWikiDialog.value = true;
   }
 
@@ -108,7 +111,8 @@
   async function deleteWiki() {
     try {
       loadingDelete.value = true;
-      const { data } = await wikiService.delete(wiki.value?.id);
+
+      const { data } = await topicService.delete(wiki.value?.id);
 
       if (data.status === "success") {
         wikiData.value = wikiData.value.filter(
@@ -220,15 +224,6 @@
             <div class="line-clamp-2">{{ slotProps.data?.description }}</div>
           </template>
         </Column>
-        <Column field="type" header="Type" sortable style="min-width: 8rem">
-          <template #body="slotProps">
-            <Tag
-              :value="slotProps.data?.isOnline ? 'online' : 'offline'"
-              :severity="slotProps.data?.isOnline ? 'success' : 'danger'"
-              class="capitalize"
-            />
-          </template>
-        </Column>
         <Column :exportable="false" style="min-width: 12rem">
           <template #body="slotProps">
             <Button
@@ -272,10 +267,10 @@
                   </div>
                 </template>
               </Column>
-              <Column header="Image" style="min-width: 12rem">
+              <Column header="Thumbnail" style="min-width: 12rem">
                 <template #body="slotProps">
                   <img
-                    :src="slotProps.data?.imageUrl"
+                    :src="slotProps.data?.thumbnailUrl"
                     :alt="slotProps.data?.title"
                     class="rounded"
                     style="width: 128px"

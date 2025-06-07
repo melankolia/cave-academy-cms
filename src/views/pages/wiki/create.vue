@@ -2,6 +2,7 @@
   import SkeletonCard from "@/components/Skeleton/Card.vue";
   import { WIKI } from "@/router/constants";
   import WikiService from "@/service/WikiService";
+  import TopicService from "@/service/TopicService";
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
   import { useField, useForm } from "vee-validate";
@@ -10,16 +11,11 @@
   import * as zod from "zod";
   import CreateWiki from "./components/Dialog/CreateWiki.vue";
 
-  const wikiData = ref({
-    title: "",
-    description: "",
-    wikis: [],
-  });
-
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
   const wikiService = reactive(new WikiService());
+  const topicService = reactive(new TopicService());
   const loadingSubmit = ref(false);
   const loading = ref(false);
   const visible = ref(false);
@@ -32,12 +28,12 @@
     })
   );
 
-  const { handleSubmit, errors, meta } = useForm({
+  const { handleSubmit, errors, meta, values, setValues } = useForm({
     validationSchema,
     initialValues: {
-      title: wikiData.value.title,
-      description: wikiData.value.description,
-      wikis: wikiData.value.wikis,
+      title: "",
+      description: "",
+      wikis: [],
     },
   });
 
@@ -61,11 +57,15 @@
       loading.value = true;
       const id = route.params?.secureId;
 
-      const { data } = await wikiService.details(id);
+      const { data } = await topicService.details(id);
       if (data.status === "success") {
         const result = data.data;
 
-        wikiData.value = result;
+        setValues({
+          title: result.title,
+          description: result.description,
+          wikis: result.wikis,
+        });
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -76,7 +76,6 @@
         detail: "Failed to fetch data!",
         life: 3000,
       });
-      router.back();
     } finally {
       loading.value = false;
     }
@@ -95,12 +94,15 @@
       const payload = {
         title: values?.title,
         description: values?.description,
+        content: values?.content,
+        wikis: values?.wikis,
+        userId: 12,
       };
 
       let type = "create";
       if (isUpdate.value) type = "update";
 
-      const id = wikiData.value?.id;
+      const id = route.params?.secureId;
 
       const {
         data: { data, status },
@@ -146,7 +148,8 @@
   const handleWikiSubmit = (e) => {
     try {
       selectedWiki.value = null;
-      const result = [...wikiData.value.wikis, e];
+
+      const result = [...wikis.value, e];
 
       setValueWikis(result);
       setWikisTouched(true);
@@ -157,8 +160,20 @@
     }
   };
 
-  const handleEditWiki = (data) => {
-    selectedWiki.value = { ...data };
+  const handleWikiUpdate = (e) => {
+    const updatedWiki = { ...wikis.value[selectedWiki.value.index], ...e };
+    const updatedWikis = [...wikis.value];
+    updatedWikis[selectedWiki.value.index] = updatedWiki;
+
+    setValueWikis(updatedWikis);
+    setWikisTouched(true);
+
+    selectedWiki.value = null;
+    visible.value = false;
+  };
+
+  const handleEditWiki = ({ data, index }) => {
+    selectedWiki.value = { ...data, index };
     visible.value = true;
   };
 
@@ -166,6 +181,11 @@
     const filtered = wikis.value.filter((e, index) => index !== data.index);
     setValueWikis(filtered);
     setWikisTouched(true);
+  };
+
+  const handleCancelWiki = () => {
+    selectedWiki.value = null;
+    visible.value = false;
   };
 </script>
 
@@ -196,19 +216,22 @@
           className="flex flex-col flex-wrap gap-2 w-full"
           name="title"
           label="Title"
-          :values="wikiData.title"
+          :values="values.title"
         />
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
-          :values="wikiData.description"
+          :values="values.description"
           rows="8"
         />
       </div>
     </div>
 
     <div class="card surface-ground mt-4">
+      <div class="font-semibold text-2xl mb-8">
+        {{ isUpdate ? "Update" : "Create" }} Wiki
+      </div>
       <DataTable
         :value="wikis"
         paginator
@@ -253,7 +276,7 @@
               icon="pi pi-pencil"
               severity="primary"
               class="p-button-text"
-              @click="handleEditWiki(slotProps.data)"
+              @click="handleEditWiki(slotProps)"
             />
             <Button
               label="Delete"
@@ -297,7 +320,8 @@
   <CreateWiki
     :selected="selectedWiki"
     :visible="visible"
-    @onCancel="visible = $event"
+    @onCancel="handleCancelWiki"
     @onSubmit="(e) => handleWikiSubmit(e)"
+    @onUpdate="(e) => handleWikiUpdate(e)"
   />
 </template>
