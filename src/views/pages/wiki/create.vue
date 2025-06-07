@@ -8,12 +8,15 @@
   import { useField, useForm } from "vee-validate";
   import { computed, onMounted, reactive, ref, watch } from "vue";
   import { useRoute, useRouter } from "vue-router";
+  import { useConfirm } from "primevue/useconfirm";
   import * as zod from "zod";
   import CreateWiki from "./components/Dialog/CreateWiki.vue";
 
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
+  const confirm = useConfirm();
+
   const wikiService = reactive(new WikiService());
   const topicService = reactive(new TopicService());
   const loadingSubmit = ref(false);
@@ -96,7 +99,6 @@
         description: values?.description,
         content: values?.content,
         wikis: values?.wikis,
-        userId: 12,
       };
 
       let type = "create";
@@ -177,16 +179,17 @@
     visible.value = true;
   };
 
-  const cbDeleteWiki = (data) => {
-    const filtered = wikis.value.filter((e, index) => index !== data.index);
+  const cbDeleteWiki = (idx) => {
+    const filtered = wikis.value.filter((e, index) => index !== idx);
     setValueWikis(filtered);
     setWikisTouched(true);
   };
 
-  const handleDeleteWiki = (data) => {
+  const handleDeleteWiki = ({ data, index }) => {
+    console.log({ data });
     if (isUpdate.value) {
       confirm.require({
-        message: `Are you sure you want to delete this ${data.title}?`,
+        message: `Are you sure you want to delete this ${data?.title || ""}?`,
         header: "Delete Confirmation",
         icon: "pi pi-exclamation-triangle",
         rejectProps: {
@@ -199,14 +202,18 @@
           severity: "danger",
         },
         accept: () => {
-          deleteWiki(data, (data) => cbDeleteWiki(data));
+          if (data.id) {
+            deleteWiki(data, () => cbDeleteWiki(index));
+          } else {
+            cbDeleteWiki(index);
+          }
         },
       });
 
       return;
     }
 
-    cbDeleteWiki(data);
+    cbDeleteWiki(index);
   };
 
   const loadingDelete = ref(false);
@@ -226,7 +233,7 @@
           life: 3000,
         });
 
-        callback(data);
+        callback();
       } else {
         throw new Error("Failed to delete data!");
       }
@@ -250,6 +257,7 @@
 
 <template>
   <div class="card">
+    <ConfirmDialog />
     <Toolbar>
       <template #start>
         <Breadcrumb

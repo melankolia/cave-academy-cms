@@ -333,7 +333,6 @@
         content: editorContent || values?.content,
         description: values?.description,
         imageUrl: "https://picsum.photos/800/600",
-        authorId: 12,
         level: values?.level,
         isOnline: values?.type?.toLowerCase() === "online",
         startDate: values?.startDate,
