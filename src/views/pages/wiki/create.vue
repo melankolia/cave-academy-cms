@@ -177,10 +177,69 @@
     visible.value = true;
   };
 
-  const handleDeleteWiki = (data) => {
+  const cbDeleteWiki = (data) => {
     const filtered = wikis.value.filter((e, index) => index !== data.index);
     setValueWikis(filtered);
     setWikisTouched(true);
+  };
+
+  const handleDeleteWiki = (data) => {
+    if (isUpdate.value) {
+      confirm.require({
+        message: `Are you sure you want to delete this ${data.title}?`,
+        header: "Delete Confirmation",
+        icon: "pi pi-exclamation-triangle",
+        rejectProps: {
+          label: "Cancel",
+          severity: "secondary",
+          outlined: true,
+        },
+        acceptProps: {
+          label: "Delete",
+          severity: "danger",
+        },
+        accept: () => {
+          deleteWiki(data, (data) => cbDeleteWiki(data));
+        },
+      });
+
+      return;
+    }
+
+    cbDeleteWiki(data);
+  };
+
+  const loadingDelete = ref(false);
+  const deleteWiki = async (data, callback) => {
+    const secureId = data.id;
+    try {
+      loadingDelete.value = true;
+      const {
+        data: { status },
+      } = await wikiService.delete(secureId);
+
+      if (status === "success") {
+        toast.add({
+          severity: "success",
+          summary: "Successful",
+          detail: "Wiki deleted",
+          life: 3000,
+        });
+
+        callback(data);
+      } else {
+        throw new Error("Failed to delete data!");
+      }
+    } catch (error) {
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to delete data!",
+        life: 3000,
+      });
+    } finally {
+      loadingDelete.value = false;
+    }
   };
 
   const handleCancelWiki = () => {

@@ -14,7 +14,7 @@
             name="title"
             label="Title"
             :values="values.title"
-            disabled
+            :disabled="isDetail"
           />
           <FieldTextArea
             className="flex flex-col flex-wrap gap-2 w-full"
@@ -22,26 +22,42 @@
             label="Description"
             :values="values.description"
             rows="4"
-            disabled
+            :disabled="isDetail"
           />
-          <div class="flex flex-col gap-2">
-            <div class="mb-2">Image</div>
-            <img
-              :src="values.imageUrl"
-              :alt="values.title"
-              class="rounded"
-              style="width: 100%"
+          <template v-if="isDetail">
+            <div class="flex flex-col gap-2">
+              <div class="mb-2">Image</div>
+              <img
+                :src="values.imageUrl"
+                :alt="values.title"
+                class="rounded"
+                style="width: 100%"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="mb-2">Thumbnail</div>
+              <img
+                :src="values.thumbnailUrl"
+                :alt="values.title"
+                class="rounded"
+                style="width: 100%"
+              />
+            </div>
+          </template>
+          <template v-else>
+            <FieldText
+              className="flex flex-col flex-wrap gap-2 w-full"
+              name="imageUrl"
+              label="Image URL"
+              :values="values.imageUrl"
             />
-          </div>
-          <div class="flex flex-col gap-2">
-            <div class="mb-2">Thumbnail</div>
-            <img
-              :src="values.thumbnailUrl"
-              :alt="values.title"
-              class="rounded"
-              style="width: 100%"
+            <FieldText
+              className="flex flex-col flex-wrap gap-2 w-full"
+              name="thumbnailUrl"
+              label="Thumbnail URL"
+              :values="values.thumbnailUrl"
             />
-          </div>
+          </template>
         </div>
       </Fieldset>
 
@@ -62,16 +78,27 @@
           class="w-[130px]"
           @click="onCancel"
         />
+        <Button
+          v-if="!isDetail"
+          type="button"
+          icon="pi pi-check"
+          label="Save"
+          class="w-[130px]"
+          @click="onSubmit"
+          :loading="isSubmitting"
+        />
       </div>
     </div>
   </Dialog>
 </template>
 
 <script setup>
+  import { WIKI } from "@/router/constants";
   import { useField, useForm } from "vee-validate";
   import { ref, computed, watch } from "vue";
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
+  import { useRoute } from "vue-router";
   import * as zod from "zod";
 
   const props = defineProps({
@@ -107,6 +134,12 @@
   ]);
 
   const toast = useToast();
+
+  const route = useRoute();
+  const isDetail = computed(() => {
+    return route.name === WIKI.DETAIL;
+  });
+
   const isEdit = computed(() => {
     return Object.keys(props.selected || {}).length > 0;
   });
@@ -185,7 +218,7 @@
     editorInstance.value = new EditorJS({
       holder: "editorjs",
       placeholder: "Let's write an awesome story!",
-      readOnly: true,
+      readOnly: isDetail.value,
       autofocus: true,
       tools: {
         header: Header,
@@ -239,6 +272,33 @@
     resetForm();
     emit("onCancel", false);
   };
+
+  const onSubmit = handleSubmit(async (values) => {
+    try {
+      const payload = {
+        title: values.title,
+        description: values.description,
+        thumbnailUrl: values.thumbnailUrl,
+        imageUrl: values.imageUrl,
+        content: values.content,
+      };
+
+      if (isEdit.value) {
+        emit("onUpdate", payload);
+        return;
+      }
+
+      emit("onSubmit", payload);
+    } catch (error) {
+      console.error("Error in onSubmit:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to fetch data!",
+        life: 3000,
+      });
+    }
+  });
 
   watch(visibleCombined, (newVal) => {
     if (newVal) {

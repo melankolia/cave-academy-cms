@@ -21,8 +21,6 @@
   const topicService = reactive(new TopicService());
   const loading = ref(false);
   const visible = ref(false);
-  const deleteTopicDialog = ref(false);
-  const topic = ref({});
 
   const validationSchema = toTypedSchema(
     zod.object({
@@ -32,7 +30,7 @@
     })
   );
 
-  const { handleSubmit, errors, meta, values, setValues } = useForm({
+  const { errors, meta, values, setValues } = useForm({
     validationSchema,
     initialValues: {
       title: "",
@@ -47,6 +45,10 @@
     { label: "Wiki List", url: "/wiki" },
     { label: "Wiki Detail" },
   ]);
+
+  const isDetail = computed(() => {
+    return route.name === WIKI.DETAIL;
+  });
 
   onMounted(() => {
     getDetail();
@@ -128,12 +130,6 @@
     visible.value = true;
   };
 
-  const handleDeleteWiki = (data) => {
-    const filtered = wikis.value.filter((e, index) => index !== data.index);
-    setValueWikis(filtered);
-    setWikisTouched(true);
-  };
-
   const handleCancelWiki = () => {
     selectedWiki.value = null;
     visible.value = false;
@@ -182,6 +178,65 @@
       console.error("Error in deleteTopic:", error);
     } finally {
       loadingDelete.value = false;
+    }
+  };
+
+  const cbDeleteWiki = (data) => {
+    const filtered = wikis.value.filter((e, index) => index !== data.index);
+    setValueWikis(filtered);
+    setWikisTouched(true);
+  };
+
+  const handleDeleteWiki = (data) => {
+    confirm.require({
+      message: `Are you sure you want to delete this ${data?.data?.title || ""}?`,
+      header: "Delete Confirmation",
+      icon: "pi pi-exclamation-triangle",
+      rejectProps: {
+        label: "Cancel",
+        severity: "secondary",
+        outlined: true,
+      },
+      acceptProps: {
+        label: "Delete",
+        severity: "danger",
+      },
+      accept: () => {
+        deleteWiki(data, () => cbDeleteWiki(data));
+      },
+    });
+  };
+
+  const loadingDeleteWiki = ref(false);
+  const deleteWiki = async ({ data }, callback) => {
+    const secureId = data.id;
+    try {
+      loadingDeleteWiki.value = true;
+      const {
+        data: { status },
+      } = await wikiService.delete(secureId);
+
+      if (status === "success") {
+        toast.add({
+          severity: "success",
+          summary: "Successful",
+          detail: "Wiki deleted",
+          life: 3000,
+        });
+
+        callback(data);
+      } else {
+        throw new Error("Failed to delete data!");
+      }
+    } catch (error) {
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to delete data!",
+        life: 3000,
+      });
+    } finally {
+      loadingDeleteWiki.value = false;
     }
   };
 </script>
