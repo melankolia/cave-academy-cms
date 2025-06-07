@@ -162,7 +162,7 @@
             @click="onEdit"
           />
           <Button
-            :loading="loadingStudent"
+            :loading="loadingDelete"
             label="Delete Student"
             icon="pi pi-trash"
             severity="danger"
