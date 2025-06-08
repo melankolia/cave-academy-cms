@@ -1,5 +1,3 @@
-<!-- TODO: Add feature Delete Wiki -->
-
 <script setup>
   import { WIKI } from "@/router/constants";
   import WikiService from "@/service/WikiService";

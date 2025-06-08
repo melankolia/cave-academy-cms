@@ -46,10 +46,6 @@
     { label: "Wiki Detail" },
   ]);
 
-  const isDetail = computed(() => {
-    return route.name === WIKI.DETAIL;
-  });
-
   onMounted(() => {
     getDetail();
   });

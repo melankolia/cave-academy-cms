@@ -3,8 +3,10 @@
     v-model:visible="visibleCombined"
     modal
     header="Wiki Detail"
-    :style="{ minWidth: '55%', maxWidth: '90%' }"
+    :style="{ width: '960px' }"
     :closable="false"
+    maximizable
+    :draggable="false"
   >
     <div class="card surface-ground py-5 mt-4">
       <Fieldset legend="Wiki Information" :toggleable="true">
@@ -94,12 +96,14 @@
 
 <script setup>
   import { WIKI } from "@/router/constants";
+  import { LINK_PREVIEW } from "@/service/Instance/constants";
   import { useField, useForm } from "vee-validate";
-  import { ref, computed, watch } from "vue";
+  import { ref, computed, watch, reactive } from "vue";
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
   import { useRoute } from "vue-router";
   import * as zod from "zod";
+  import FileUploadService from "@/service/FileUploadService";
 
   const props = defineProps({
     visible: {
@@ -133,6 +137,7 @@
     "onUpdate",
   ]);
 
+  const fileUploadService = reactive(new FileUploadService());
   const toast = useToast();
 
   const route = useRoute();
@@ -221,7 +226,15 @@
       readOnly: isDetail.value,
       autofocus: true,
       tools: {
-        header: Header,
+        header: {
+          class: Header,
+          config: {
+            placeholder: "Enter a header",
+            levels: [1, 2, 3, 4, 5, 6],
+            defaultLevel: 1,
+            shortcut: "CMD+SHIFT+H",
+          },
+        },
         list: List,
         image: SimpleImage,
         paragraph: {
@@ -231,10 +244,61 @@
         image: {
           class: ImageTool,
           config: {
-            endpoints: {
-              byFile: "http://localhost:8008/uploadFile",
-              byUrl: "http://localhost:8008/fetchUrl",
+            // https://github.com/editor-js/image
+            // TODO: Create Custom Image Upload because we need to pass the cookies to the backend
+            uploader: {
+              /**
+               * Upload file to the server and return an uploaded image data
+               * @param {File} file - file selected from the device or pasted by drag-n-drop
+               * @return {Promise.<{success, file: {url}}>}
+               */
+              uploadByFile(file) {
+                // your own uploading logic here
+
+                const formData = new FormData();
+                formData.append("image", file);
+
+                return fileUploadService
+                  .upload(formData)
+                  .then(({ data }) => {
+                    if (data.success === 1) {
+                      toast.add({
+                        severity: "success",
+                        summary: "Success Data",
+                        detail: "Image uploaded successfully!",
+                        life: 3000,
+                      });
+
+                      return {
+                        success: 1,
+                        file: {
+                          url: data.file.url,
+                        },
+                      };
+                    } else {
+                      toast.add({
+                        severity: "error",
+                        summary: "Error Data",
+                        detail: "Failed to upload image!",
+                        life: 3000,
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error in uploadByFile:", error);
+                    toast.add({
+                      severity: "error",
+                      summary: "Error Data",
+                      detail: "Failed to upload image!",
+                      life: 3000,
+                    });
+                  });
+              },
             },
+            // endpoints: {
+            //   byFile: import.meta.env.VITE_MINIO_URL,
+            //   byUrl: "http://localhost:8008/fetchUrl",
+            // },
           },
         },
         code: CodeTool,
@@ -242,7 +306,7 @@
         linkTool: {
           class: LinkTool,
           config: {
-            endpoint: "http://localhost:8008/fetchUrl",
+            endpoint: LINK_PREVIEW,
           },
         },
         raw: RawTool,
@@ -341,5 +405,19 @@
     .editor-wrapper {
       padding: 0.5rem;
     }
+  }
+
+  /* Dark mode overrides for link tool */
+  :deep(.link-tool__title) {
+    color: var(--text-color);
+  }
+
+  :deep(.link-tool__description) {
+    color: var(--text-secondary-color);
+  }
+
+  :deep(.link-tool__content) {
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
   }
 </style>

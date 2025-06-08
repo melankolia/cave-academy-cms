@@ -25,3 +25,7 @@ export const TOPIC = `${API_VERSION}/topic`;
 export const WIKI = `${API_VERSION}/wiki`;
 
 export const ACTIVE_STUDENTS = `${API_VERSION}/active-students/count-per-course`;
+
+export const FILE_UPLOAD = `${API_VERSION}/files/uploadFile`;
+
+export const LINK_PREVIEW = `${API_VERSION}/link/preview`;

@@ -9,6 +9,8 @@
   import { useRoute, useRouter } from "vue-router";
   import * as zod from "zod";
   import { useConfirm } from "primevue/useconfirm";
+  import FileUploadService from "@/service/FileUploadService";
+  import { LINK_PREVIEW } from "@/service/Instance/constants";
 
   // Editor.js and plugins
   import EditorJS from "@editorjs/editorjs";
@@ -41,6 +43,8 @@
   const router = useRouter();
   const route = useRoute();
   const newsService = reactive(new NewsService());
+  const fileUploadService = reactive(new FileUploadService());
+
   const loading = ref(false);
   const editorInstance = ref(null);
   const disabled = ref(true);
@@ -118,7 +122,15 @@
       readOnly: disabled.value,
       autofocus: !disabled.value,
       tools: {
-        header: Header,
+        header: {
+          class: Header,
+          config: {
+            placeholder: "Enter a header",
+            levels: [1, 2, 3, 4, 5, 6],
+            defaultLevel: 1,
+            shortcut: "CMD+SHIFT+H",
+          },
+        },
         list: List,
         image: SimpleImage,
         paragraph: {
@@ -128,9 +140,47 @@
         image: {
           class: ImageTool,
           config: {
-            endpoints: {
-              byFile: "http://localhost:8008/uploadFile",
-              byUrl: "http://localhost:8008/fetchUrl",
+            uploadByFile(file) {
+              // your own uploading logic here
+
+              const formData = new FormData();
+              formData.append("image", file);
+
+              return fileUploadService
+                .upload(formData)
+                .then(({ data }) => {
+                  if (data.success === 1) {
+                    toast.add({
+                      severity: "success",
+                      summary: "Success Data",
+                      detail: "Image uploaded successfully!",
+                      life: 3000,
+                    });
+
+                    return {
+                      success: 1,
+                      file: {
+                        url: data.file.url,
+                      },
+                    };
+                  } else {
+                    toast.add({
+                      severity: "error",
+                      summary: "Error Data",
+                      detail: "Failed to upload image!",
+                      life: 3000,
+                    });
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error in uploadByFile:", error);
+                  toast.add({
+                    severity: "error",
+                    summary: "Error Data",
+                    detail: "Failed to upload image!",
+                    life: 3000,
+                  });
+                });
             },
           },
         },
@@ -139,7 +189,7 @@
         linkTool: {
           class: LinkTool,
           config: {
-            endpoint: "http://localhost:8008/fetchUrl",
+            endpoint: LINK_PREVIEW,
           },
         },
         raw: RawTool,
@@ -447,5 +497,19 @@
     .editor-wrapper {
       padding: 0.5rem;
     }
+  }
+
+  /* Dark mode overrides for link tool */
+  :deep(.link-tool__title) {
+    color: var(--text-color);
+  }
+
+  :deep(.link-tool__description) {
+    color: var(--text-secondary-color);
+  }
+
+  :deep(.link-tool__content) {
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
   }
 </style>
