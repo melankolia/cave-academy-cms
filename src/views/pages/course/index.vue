@@ -157,7 +157,7 @@
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <h4 class="m-0">Manage Course</h4>
+            <p class="m-0">Manage Course</p>
             <IconField>
               <InputIcon>
                 <i class="pi pi-search" />

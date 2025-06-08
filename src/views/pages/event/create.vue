@@ -1,5 +1,6 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
+  import UploadImage from "@/components/Upload.vue";
   import { DASHBOARD, EVENT } from "@/router/constants";
   import EventService from "@/service/EventService";
   import FileUploadService from "@/service/FileUploadService";
@@ -91,7 +92,10 @@
           },
           { message: "Please add some content to the editor" }
         ),
-      // imageUrl: zod.string().min(1, { message: "Image is Required" }),
+      imageUrl: zod
+        .string()
+        .min(1, { message: "Image URL is Required" })
+        .url({ message: "Must be a valid URL" }),
       level: zod.string().min(1, { message: "Level is Required" }),
       description: zod.string().min(1, { message: "Description is Required" }),
       type: zod
@@ -203,47 +207,49 @@
         image: {
           class: ImageTool,
           config: {
-            uploadByFile(file) {
-              // your own uploading logic here
+            uploader: {
+              uploadByFile(file) {
+                // your own uploading logic here
 
-              const formData = new FormData();
-              formData.append("image", file);
+                const formData = new FormData();
+                formData.append("image", file);
 
-              return fileUploadService
-                .upload(formData)
-                .then(({ data }) => {
-                  if (data.success === 1) {
-                    toast.add({
-                      severity: "success",
-                      summary: "Success Data",
-                      detail: "Image uploaded successfully!",
-                      life: 3000,
-                    });
+                return fileUploadService
+                  .upload(formData)
+                  .then(({ data }) => {
+                    if (data.success === 1) {
+                      toast.add({
+                        severity: "success",
+                        summary: "Success Data",
+                        detail: "Image uploaded successfully!",
+                        life: 3000,
+                      });
 
-                    return {
-                      success: 1,
-                      file: {
-                        url: data.file.url,
-                      },
-                    };
-                  } else {
+                      return {
+                        success: 1,
+                        file: {
+                          url: data.file.url,
+                        },
+                      };
+                    } else {
+                      toast.add({
+                        severity: "error",
+                        summary: "Error Data",
+                        detail: "Failed to upload image!",
+                        life: 3000,
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error in uploadByFile:", error);
                     toast.add({
                       severity: "error",
                       summary: "Error Data",
                       detail: "Failed to upload image!",
                       life: 3000,
                     });
-                  }
-                })
-                .catch((error) => {
-                  console.error("Error in uploadByFile:", error);
-                  toast.add({
-                    severity: "error",
-                    summary: "Error Data",
-                    detail: "Failed to upload image!",
-                    life: 3000,
                   });
-                });
+              },
             },
           },
         },
@@ -325,40 +331,43 @@
   });
 
   const onUpload = async (event) => {
-    if (event?.xhr?.status == 200) {
-      try {
-        const { result } = await JSON.parse(event.xhr.response);
-        eventData.value.imageUrl = result.imageUrl;
-        setImageUrl(result.imageUrl);
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
 
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "File Uploaded",
-          life: 3000,
-        });
-      } catch (error) {
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
+
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
         toast.add({
           severity: "error",
-          summary: "Upload Failed",
-          detail: "Image Upload Failed",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
           life: 3000,
         });
-      }
-    }
+      });
   };
 
-  const handleImageError = () => {
-    toast.add({
-      severity: "error",
-      summary: "Upload Failed",
-      detail: "Image Upload Failed",
-      life: 3000,
-    });
-  };
-
-  const handleImageRemove = () => {
-    eventData.value.imageUrl = null;
+  const onCancelImage = () => {
     setImageUrl(null);
   };
 
@@ -483,35 +492,18 @@
         />
         <div class="flex flex-col">
           <div class="mb-2">Image</div>
-          <FileUpload
-            @error="handleImageError"
-            :url="`/api/v1/upload`"
-            name="image"
-            @upload="onUpload"
-            accept="image/*"
-            @clear="handleImageRemove"
-            @remove="handleImageRemove"
-            :maxFileSize="1000000"
-          >
-            <template #empty>
-              <div v-if="eventData.imageUrl" class="flex items-center flex-col">
-                <img
-                  :src="eventData.imageUrl"
-                  :alt="eventData.title"
-                  class="w-full max-w-md rounded-lg shadow-lg mb-4"
-                />
-                <p class="text-gray-600">
-                  Drag and drop or click to replace image
-                </p>
-              </div>
-              <p v-else class="text-gray-600">
-                Drag and drop image here or click to upload
-              </p>
-            </template>
-          </FileUpload>
+          <UploadImage
+            :multiple="false"
+            :uploadFn="onUpload"
+            @cancelImage="onCancelImage"
+          />
           <small v-if="!metaImage.valid" class="text-red-500">{{
             errorImage
           }}</small>
+        </div>
+        <div v-if="imageUrl" class="flex flex-col">
+          <div class="mb-2">Image Preview</div>
+          <img :src="imageUrl" alt="Image Preview" class="w-full" />
         </div>
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"

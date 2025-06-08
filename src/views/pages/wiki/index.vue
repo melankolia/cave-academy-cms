@@ -190,7 +190,7 @@
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <h4 class="m-0">Manage Wiki</h4>
+            <p class="m-0">Manage Wiki</p>
             <IconField>
               <InputIcon>
                 <i class="pi pi-search" />
@@ -244,7 +244,7 @@
         </Column>
         <template #expansion="slotProps">
           <div class="p-4">
-            <h4 class="py-2.5">Wiki List</h4>
+            <p class="py-2.5">Wiki List</p>
             <DataTable
               :value="slotProps.data.wiki"
               paginator

@@ -163,7 +163,7 @@
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <h4 class="m-0">Manage Event</h4>
+            <p class="m-0">Manage Event</p>
             <IconField>
               <InputIcon>
                 <i class="pi pi-search" />

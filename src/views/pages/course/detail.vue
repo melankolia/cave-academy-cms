@@ -68,7 +68,7 @@
 
   const contentCovered = ref([]);
 
-  const { setFieldValue } = useForm();
+  const { setFieldValue, values } = useForm();
 
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
@@ -93,47 +93,49 @@
         image: {
           class: ImageTool,
           config: {
-            uploadByFile(file) {
-              // your own uploading logic here
+            uploader: {
+              uploadByFile(file) {
+                // your own uploading logic here
 
-              const formData = new FormData();
-              formData.append("image", file);
+                const formData = new FormData();
+                formData.append("image", file);
 
-              return fileUploadService
-                .upload(formData)
-                .then(({ data }) => {
-                  if (data.success === 1) {
-                    toast.add({
-                      severity: "success",
-                      summary: "Success Data",
-                      detail: "Image uploaded successfully!",
-                      life: 3000,
-                    });
+                return fileUploadService
+                  .upload(formData)
+                  .then(({ data }) => {
+                    if (data.success === 1) {
+                      toast.add({
+                        severity: "success",
+                        summary: "Success Data",
+                        detail: "Image uploaded successfully!",
+                        life: 3000,
+                      });
 
-                    return {
-                      success: 1,
-                      file: {
-                        url: data.file.url,
-                      },
-                    };
-                  } else {
+                      return {
+                        success: 1,
+                        file: {
+                          url: data.file.url,
+                        },
+                      };
+                    } else {
+                      toast.add({
+                        severity: "error",
+                        summary: "Error Data",
+                        detail: "Failed to upload image!",
+                        life: 3000,
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error in uploadByFile:", error);
                     toast.add({
                       severity: "error",
                       summary: "Error Data",
                       detail: "Failed to upload image!",
                       life: 3000,
                     });
-                  }
-                })
-                .catch((error) => {
-                  console.error("Error in uploadByFile:", error);
-                  toast.add({
-                    severity: "error",
-                    summary: "Error Data",
-                    detail: "Failed to upload image!",
-                    life: 3000,
                   });
-                });
+              },
             },
           },
         },
@@ -353,13 +355,10 @@
           rows="5"
         />
         <div class="flex flex-col gap-4 w-full">
-          <FieldText
-            className="flex flex-col flex-wrap gap-2 w-full"
-            name="imageUrl"
-            label="Image URL"
-            :values="courseData.imageUrl"
-            disabled
-          />
+          <div class="flex flex-col">
+            <div class="mb-2">Image</div>
+            <img :src="values.imageUrl" alt="Image Preview" class="w-full" />
+          </div>
           <FieldText
             className="flex flex-col flex-wrap gap-2 w-full"
             name="videoUrl"

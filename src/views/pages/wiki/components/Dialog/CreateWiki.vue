@@ -47,18 +47,37 @@
             </div>
           </template>
           <template v-else>
-            <FieldText
-              className="flex flex-col flex-wrap gap-2 w-full"
-              name="imageUrl"
-              label="Image URL"
-              :values="values.imageUrl"
-            />
-            <FieldText
-              className="flex flex-col flex-wrap gap-2 w-full"
-              name="thumbnailUrl"
-              label="Thumbnail URL"
-              :values="values.thumbnailUrl"
-            />
+            <div class="flex flex-col">
+              <div class="mb-2">Image</div>
+              <UploadImage
+                :multiple="false"
+                :uploadFn="onUploadImage"
+                @cancelImage="onCancelImage"
+              />
+              <small v-if="!metaImage.valid" class="text-red-500">{{
+                imageUrlError
+              }}</small>
+            </div>
+            <div v-if="imageUrl" class="flex flex-col">
+              <div class="mb-2">Image Preview</div>
+              <img :src="imageUrl" alt="Image Preview" class="w-full" />
+            </div>
+
+            <div class="flex flex-col">
+              <div class="mb-2">Thumbnail</div>
+              <UploadImage
+                :multiple="false"
+                :uploadFn="onUploadThumbnail"
+                @cancelImage="onCancelThumbnail"
+              />
+              <small v-if="!metaThumbnail.valid" class="text-red-500">{{
+                thumbnailUrlError
+              }}</small>
+            </div>
+            <div v-if="thumbnailUrl" class="flex flex-col">
+              <div class="mb-2">Thumbnail Preview</div>
+              <img :src="thumbnailUrl" alt="Thumbnail Preview" class="w-full" />
+            </div>
           </template>
         </div>
       </Fieldset>
@@ -104,6 +123,7 @@
   import { useRoute } from "vue-router";
   import * as zod from "zod";
   import FileUploadService from "@/service/FileUploadService";
+  import UploadImage from "@/components/Upload.vue";
 
   const props = defineProps({
     visible: {
@@ -155,11 +175,11 @@
       description: zod.string().min(1, { message: "Description is Required" }),
       thumbnailUrl: zod
         .string()
-        .min(1, { message: "Thumbnail is Required" })
+        .min(1, { message: "Thumbnail URL is Required" })
         .url({ message: "Must be a valid URL" }),
       imageUrl: zod
         .string()
-        .min(1, { message: "Image is Required" })
+        .min(1, { message: "Image URL is Required" })
         .url({ message: "Must be a valid URL" }),
       content: zod
         .string({
@@ -215,6 +235,20 @@
     setTouched: setContentTouched,
     resetField: resetContent,
   } = useField("content");
+
+  const {
+    value: imageUrl,
+    errorMessage: imageUrlError,
+    setValue: setImageUrl,
+    meta: metaImage,
+  } = useField("imageUrl");
+
+  const {
+    value: thumbnailUrl,
+    errorMessage: thumbnailUrlError,
+    setValue: setThumbnailUrl,
+    meta: metaThumbnail,
+  } = useField("thumbnailUrl");
 
   const editorInstance = ref(null);
 
@@ -363,6 +397,88 @@
       });
     }
   });
+
+  const onUploadImage = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
+
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
+
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
+        toast.add({
+          severity: "error",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
+          life: 3000,
+        });
+      });
+  };
+
+  const onUploadThumbnail = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
+
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Thumbnail uploaded successfully!",
+            life: 3000,
+          });
+
+          setThumbnailUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload thumbnail!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
+        toast.add({
+          severity: "error",
+          summary: "Error Data",
+          detail: "Failed to upload thumbnail!",
+          life: 3000,
+        });
+      });
+  };
+
+  const onCancelImage = () => {
+    setImageUrl(null);
+  };
+
+  const onCancelThumbnail = () => {
+    setThumbnailUrl(null);
+  };
 
   watch(visibleCombined, (newVal) => {
     if (newVal) {

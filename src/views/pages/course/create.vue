@@ -13,6 +13,7 @@
   // Components
   import SkeletonCard from "@/components/Skeleton/Card.vue";
   import CardCourse from "@/components/Card/CardCourse.vue";
+  import UploadImage from "@/components/Upload.vue";
 
   // Services and Constants
   import { COURSE, DASHBOARD } from "@/router/constants";
@@ -94,8 +95,14 @@
         description: zod
           .string()
           .min(1, { message: "Description is Required" }),
-        videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
-        imageUrl: zod.string().min(1, { message: "Image URL is Required" }),
+        videoUrl: zod
+          .string()
+          .min(1, { message: "Video URL is Required" })
+          .url({ message: "Must be a valid URL" }),
+        imageUrl: zod
+          .string()
+          .min(1, { message: "Image URL is Required" })
+          .url({ message: "Must be a valid URL" }),
         level: zod.union([
           zod.string().min(1, { message: "Level is Required" }),
         ]),
@@ -188,6 +195,13 @@
   const { value: startDate, errorMessage: startDateError } =
     useField("startDate");
   const { value: endDate, errorMessage: endDateError } = useField("endDate");
+
+  const {
+    value: imageUrl,
+    setValue: setImageUrl,
+    meta: metaImage,
+    errorMessage: errorImage,
+  } = useField("imageUrl");
 
   // Editor Setup
   const initEditor = async () => {
@@ -827,6 +841,47 @@
       loading.value = false;
     }
   };
+
+  const onUpload = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
+
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
+
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
+        toast.add({
+          severity: "error",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
+          life: 3000,
+        });
+      });
+  };
+
+  const onCancelImage = () => {
+    setImageUrl(null);
+  };
 </script>
 
 <template>
@@ -887,19 +942,20 @@
         label="Description"
         :values="courseData.description"
       />
-      <FieldText
-        className="flex flex-col flex-wrap gap-2 w-full"
-        name="imageUrl"
-        label="Image URL"
-        :values="courseData.imageUrl"
-      />
-      <div class="flex flex-col gap-4 w-full">
-        <FieldText
-          className="flex flex-col flex-wrap gap-2 w-full"
-          name="videoUrl"
-          label="Video URL"
-          :values="courseData.videoUrl"
+      <div class="flex flex-col">
+        <div class="mb-2">Image</div>
+        <UploadImage
+          :multiple="false"
+          :uploadFn="onUpload"
+          @cancelImage="onCancelImage"
         />
+        <small v-if="!metaImage.valid" class="text-red-500">{{
+          errorImage
+        }}</small>
+      </div>
+      <div v-if="imageUrl" class="flex flex-col">
+        <div class="mb-2">Image Preview</div>
+        <img :src="imageUrl" alt="Image Preview" class="w-full" />
       </div>
       <div class="grid grid-cols-12 gap-4">
         <div class="flex flex-col col-span-6 gap-2">
