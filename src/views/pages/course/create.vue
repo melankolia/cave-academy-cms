@@ -209,7 +209,7 @@
       holder: "editorjs",
       placeholder: "Let's write an awesome story!",
       readOnly: false,
-      autofocus: true,
+      autofocus: false,
       tools: {
         header: {
           class: Header,
@@ -817,7 +817,6 @@
 
   const getListCourse = async (callback) => {
     try {
-      loading.value = true;
       const {
         data: { data, status },
       } = await courseService.list({
@@ -837,8 +836,6 @@
         detail: "Failed to fetch data!",
         life: 3000,
       });
-    } finally {
-      loading.value = false;
     }
   };
 
@@ -925,255 +922,263 @@
     </div>
   </div>
 
-  <div class="card mb-2">
-    <p class="font-semibold text-2xl mb-8">
-      {{ isUpdate ? "Update Course" : "Create Course" }}
-    </p>
-    <div class="flex flex-col gap-4 w-full">
-      <FieldText
-        className="flex flex-col flex-wrap gap-2 w-full"
-        name="title"
-        label="Title"
-        :values="title"
-      />
-      <FieldTextArea
-        className="flex flex-col flex-wrap gap-2 w-full"
-        name="description"
-        label="Description"
-        :values="courseData.description"
-      />
-      <div class="flex flex-col">
-        <div class="mb-2">Image</div>
-        <UploadImage
-          :multiple="false"
-          :uploadFn="onUpload"
-          @cancelImage="onCancelImage"
+  <template v-if="!loading">
+    <div class="card mb-2">
+      <p class="font-semibold text-2xl mb-8">
+        {{ isUpdate ? "Update Course" : "Create Course" }}
+      </p>
+      <div class="flex flex-col gap-4 w-full">
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="title"
+          label="Title"
+          :values="title"
         />
-        <small v-if="!metaImage.valid" class="text-red-500">{{
-          errorImage
-        }}</small>
-      </div>
-      <div v-if="imageUrl" class="flex flex-col">
-        <div class="mb-2">Image Preview</div>
-        <img :src="imageUrl" alt="Image Preview" class="w-full" />
-      </div>
-      <div class="grid grid-cols-12 gap-4">
-        <div class="flex flex-col col-span-6 gap-2">
-          <label for="courseLevel">Level</label>
-          <Select
-            id="courseLevel"
-            v-model="level"
-            display="chip"
-            :options="courseLevel"
-            optionLabel="label"
-            optionValue="value"
-            filter
-            placeholder="Select Course Level"
-            class="w-full"
+        <FieldTextArea
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="description"
+          label="Description"
+          :values="courseData.description"
+        />
+        <div class="flex flex-col">
+          <div class="mb-2">Image</div>
+          <UploadImage
+            :multiple="false"
+            :uploadFn="onUpload"
+            @cancelImage="onCancelImage"
           />
-          <small v-if="errors.level" class="text-red-500">{{
-            errors.level
+          <small v-if="!metaImage.valid" class="text-red-500">{{
+            errorImage
           }}</small>
         </div>
-        <div class="flex flex-col col-span-6 gap-2">
-          <label for="courseType">Type</label>
-          <SelectButton
-            id="courseType"
-            v-model="type"
-            :options="courseType"
-            optionLabel="label"
-            optionValue="value"
-            filter
-            placeholder="Select Course Type"
-            class="w-full"
-          />
-          <small v-if="errors.type" class="text-red-500">{{
-            errors.type
-          }}</small>
+        <div v-if="imageUrl" class="flex flex-col">
+          <div class="mb-2">Image Preview</div>
+          <img :src="imageUrl" alt="Image Preview" class="w-full" />
         </div>
-      </div>
-      <div class="grid grid-cols-12 gap-4">
-        <div class="flex flex-col col-span-6 gap-2">
-          <label for="startDate">Start Date</label>
-          <Calendar
-            id="startDate"
-            v-model="startDate"
-            dateFormat="dd/mm/yy"
-            placeholder="Select Start Date"
-            class="w-full"
-            :showIcon="true"
-            :minDate="new Date()"
-            :manualInput="false"
-          />
-          <small v-if="errors.startDate" class="text-red-500">{{
-            errors.startDate
-          }}</small>
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="videoUrl"
+          label="Video URL"
+          :values="courseData.videoUrl"
+        />
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseLevel">Level</label>
+            <Select
+              id="courseLevel"
+              v-model="level"
+              display="chip"
+              :options="courseLevel"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Level"
+              class="w-full"
+            />
+            <small v-if="errors.level" class="text-red-500">{{
+              errors.level
+            }}</small>
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseType">Type</label>
+            <SelectButton
+              id="courseType"
+              v-model="type"
+              :options="courseType"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Type"
+              class="w-full"
+            />
+            <small v-if="errors.type" class="text-red-500">{{
+              errors.type
+            }}</small>
+          </div>
         </div>
-        <div class="flex flex-col col-span-6 gap-2">
-          <label for="endDate">End Date</label>
-          <Calendar
-            id="endDate"
-            v-model="endDate"
-            dateFormat="dd/mm/yy"
-            placeholder="Select End Date"
-            class="w-full"
-            :showIcon="true"
-            :minDate="startDate || new Date()"
-            :disabled="!startDate"
-            :manualInput="false"
-          />
-          <small v-if="errors.endDate" class="text-red-500">{{
-            errors.endDate
-          }}</small>
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="startDate">Start Date</label>
+            <Calendar
+              id="startDate"
+              v-model="startDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select Start Date"
+              class="w-full"
+              :showIcon="true"
+              :minDate="new Date()"
+              :manualInput="false"
+            />
+            <small v-if="errors.startDate" class="text-red-500">{{
+              errors.startDate
+            }}</small>
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="endDate">End Date</label>
+            <Calendar
+              id="endDate"
+              v-model="endDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select End Date"
+              class="w-full"
+              :showIcon="true"
+              :minDate="startDate || new Date()"
+              :disabled="!startDate"
+              :manualInput="false"
+            />
+            <small v-if="errors.endDate" class="text-red-500">{{
+              errors.endDate
+            }}</small>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="grid grid-cols-12 gap-2">
-    <div class="col-span-8 card m-0">
-      <p class="font-semibold text-2xl mb-8">About Course</p>
-      <div class="editor-container">
-        <div id="editorjs" class="editor-wrapper"></div>
-        <small v-if="errors.content" class="text-red-500 mt-2">{{
-          errors.content
-        }}</small>
+    <div class="grid grid-cols-12 gap-2">
+      <div class="col-span-8 card m-0">
+        <p class="font-semibold text-2xl mb-8">About Course</p>
+        <div class="editor-container">
+          <div id="editorjs" class="editor-wrapper"></div>
+          <small v-if="errors.content" class="text-red-500 mt-2">{{
+            errors.content
+          }}</small>
+        </div>
       </div>
-    </div>
-    <div class="col-span-4 card h-full">
-      <p class="font-semibold text-2xl mb-8">Content Covered</p>
-      <Accordion :multiple="true">
-        <AccordionTab v-for="(level, lIdx) in contentCovered" :key="lIdx">
-          <template #header>
-            <div
-              class="flex items-center justify-between w-full draggable-level"
-              draggable="true"
-              @dragstart="handleDragStart($event, lIdx)"
-              @dragover.prevent="handleDragOver"
-              @drop.stop="handleDrop($event, lIdx)"
-            >
-              <div class="flex items-center gap-4">
-                <i class="pi pi-bars text-gray-500"></i>
-                <span v-if="level.type == 'PARENT'">
-                  Level {{ level.level }}: {{ level.title }}
-                </span>
-                <span v-else>
-                  Level {{ level.level }}: {{ level.courses?.title }}
-                </span>
-              </div>
-              <div class="flex items-center gap-2 p-1">
-                <Button
-                  v-if="level.type == 'CHILDREN'"
-                  icon="pi pi-ellipsis-v"
-                  text
-                  size="small"
-                  @click.stop="showLevelMenu($event, lIdx)"
-                />
-                <Chip
-                  v-else
-                  label="Current Course"
-                  class="p-chip-success mr-3"
-                />
-              </div>
-            </div>
-          </template>
-
-          <!-- If the level is linked to a course -->
-          <template v-if="level.type == 'CHILDREN'">
-            <CardCourse :item="level.courses" />
-          </template>
-
-          <template v-else>
-            <div
-              v-for="(subContent, sIdx) in level.subContents"
-              :key="sIdx"
-              class="mb-4"
-            >
-              <Panel
-                :header="subContent.number + '. ' + subContent.title"
-                toggleable
+      <div class="col-span-4 card h-full">
+        <p class="font-semibold text-2xl mb-8">Content Covered</p>
+        <Accordion :multiple="true">
+          <AccordionTab v-for="(level, lIdx) in contentCovered" :key="lIdx">
+            <template #header>
+              <div
+                class="flex items-center justify-between w-full draggable-level"
+                draggable="true"
+                @dragstart="handleDragStart($event, lIdx)"
+                @dragover.prevent="handleDragOver"
+                @drop.stop="handleDrop($event, lIdx)"
               >
-                <template #icons>
+                <div class="flex items-center gap-4">
+                  <i class="pi pi-bars text-gray-500"></i>
+                  <span v-if="level.type == 'PARENT'">
+                    Level {{ level.level }}: {{ level.title }}
+                  </span>
+                  <span v-else>
+                    Level {{ level.level }}: {{ level.courses?.title }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 p-1">
                   <Button
+                    v-if="level.type == 'CHILDREN'"
                     icon="pi pi-ellipsis-v"
                     text
                     size="small"
-                    @click.stop="showMenu($event, lIdx, sIdx)"
+                    @click.stop="showLevelMenu($event, lIdx)"
                   />
-                </template>
-                <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
-                <ul class="pl-4">
-                  <li
-                    v-for="(course, courseIdx) in subContent.subCourses"
-                    :key="courseIdx"
-                    class="flex items-center gap-2 mb-2"
-                  >
-                    <div class="flex-1">
-                      <div class="font-medium">{{ course.title }}</div>
-                      <div class="text-sm text-gray-600">
-                        {{ course.description }}
-                      </div>
-                    </div>
+                  <Chip
+                    v-else
+                    label="Current Course"
+                    class="p-chip-success mr-3"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- If the level is linked to a course -->
+            <template v-if="level.type == 'CHILDREN'">
+              <CardCourse :item="level" />
+            </template>
+
+            <template v-else>
+              <div
+                v-for="(subContent, sIdx) in level.subContents"
+                :key="sIdx"
+                class="mb-4"
+              >
+                <Panel
+                  :header="subContent.number + '. ' + subContent.title"
+                  toggleable
+                >
+                  <template #icons>
                     <Button
                       icon="pi pi-ellipsis-v"
                       text
                       size="small"
-                      @click.stop="
-                        showCourseMenu($event, lIdx, sIdx, courseIdx)
-                      "
+                      @click.stop="showMenu($event, lIdx, sIdx)"
                     />
-                  </li>
-                </ul>
-                <Button
-                  label="Add Course"
-                  icon="pi pi-plus"
-                  text
-                  size="small"
-                  @click="addCourse(lIdx, sIdx)"
-                />
-              </Panel>
-            </div>
-            <Button
-              label="Add Sub-Content"
-              icon="pi pi-plus"
-              text
-              size="small"
-              @click="addSubContent(lIdx)"
-              class="mt-2"
-            />
-          </template>
-        </AccordionTab>
-      </Accordion>
-      <Button
-        label="Add Level"
-        icon="pi pi-plus"
-        class="mt-4"
-        @click="addLevel"
-      />
-    </div>
-  </div>
-  <div class="card surface-ground py-5 mt-4">
-    <div class="flex justify-end px-4">
-      <div class="flex gap-3">
+                  </template>
+                  <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
+                  <ul class="pl-4">
+                    <li
+                      v-for="(course, courseIdx) in subContent.subCourses"
+                      :key="courseIdx"
+                      class="flex items-center gap-2 mb-2"
+                    >
+                      <div class="flex-1">
+                        <div class="font-medium">{{ course.title }}</div>
+                        <div class="text-sm text-gray-600">
+                          {{ course.description }}
+                        </div>
+                      </div>
+                      <Button
+                        icon="pi pi-ellipsis-v"
+                        text
+                        size="small"
+                        @click.stop="
+                          showCourseMenu($event, lIdx, sIdx, courseIdx)
+                        "
+                      />
+                    </li>
+                  </ul>
+                  <Button
+                    label="Add Course"
+                    icon="pi pi-plus"
+                    text
+                    size="small"
+                    @click="addCourse(lIdx, sIdx)"
+                  />
+                </Panel>
+              </div>
+              <Button
+                label="Add Sub-Content"
+                icon="pi pi-plus"
+                text
+                size="small"
+                @click="addSubContent(lIdx)"
+                class="mt-2"
+              />
+            </template>
+          </AccordionTab>
+        </Accordion>
         <Button
-          label="Cancel"
-          icon="pi pi-times"
-          severity="secondary"
-          outlined
-          class="w-[130px]"
-          @click="onCancel"
-        />
-        <Button
-          label="Save Course"
-          icon="pi pi-check"
-          severity="primary"
-          class="w-[130px]"
-          @click="saveData"
-          :loading="loadingSubmit"
+          label="Add Level"
+          icon="pi pi-plus"
+          class="mt-4"
+          @click="addLevel"
         />
       </div>
     </div>
-  </div>
+    <div class="card surface-ground py-5 mt-4">
+      <div class="flex justify-end px-4">
+        <div class="flex gap-3">
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            severity="secondary"
+            outlined
+            class="w-[130px]"
+            @click="onCancel"
+          />
+          <Button
+            label="Save Course"
+            icon="pi pi-check"
+            severity="primary"
+            class="w-[130px]"
+            @click="saveData"
+            :loading="loadingSubmit"
+          />
+        </div>
+      </div>
+    </div>
+  </template>
 
   <!-- Dialog for Add/Edit -->
   <Dialog

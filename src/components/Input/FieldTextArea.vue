@@ -22,6 +22,10 @@
       type: Boolean,
       default: false,
     },
+    readOnly: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const { value, errorMessage, meta } = useField(() => props.name, undefined, {
@@ -46,9 +50,21 @@
       :rows="props.rows"
       :placeholder="props.placeholder"
       :disabled="props.disabled"
+      :readonly="props.readOnly"
+      :class="[
+        { 'border-gray-300': props.readOnly },
+        { 'readonly-input': props.readOnly },
+      ]"
     />
     <small v-if="meta.touched && !meta.valid" class="text-red-500">{{
       errorMessage
     }}</small>
   </div>
 </template>
+
+<style scoped>
+  :deep(.readonly-input.p-textarea:enabled:focus) {
+    box-shadow: none;
+    border-color: #ced4da;
+  }
+</style>

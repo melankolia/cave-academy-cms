@@ -384,7 +384,7 @@
           name="title"
           label="Title"
           :values="eventData.title"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
         <div class="flex flex-col">
           <div class="mb-2">Image</div>
@@ -400,14 +400,14 @@
           label="Description"
           :values="eventData.description"
           rows="8"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="author"
           label="Author"
           :values="`${eventData.author.name} (${eventData.author.role})`"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
         <div class="grid grid-cols-12 gap-4">
           <div class="flex flex-col col-span-6 gap-2">

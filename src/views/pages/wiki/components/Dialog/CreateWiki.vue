@@ -16,7 +16,7 @@
             name="title"
             label="Title"
             :values="values.title"
-            :disabled="isDetail"
+            :readOnly="isDetail"
           />
           <FieldTextArea
             className="flex flex-col flex-wrap gap-2 w-full"
@@ -24,7 +24,7 @@
             label="Description"
             :values="values.description"
             rows="4"
-            :disabled="isDetail"
+            :readOnly="isDetail"
           />
           <template v-if="isDetail">
             <div class="flex flex-col gap-2">

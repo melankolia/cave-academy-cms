@@ -298,7 +298,7 @@
           name="title"
           label="Title"
           :values="values.title"
-          disabled
+          readOnly
         />
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
@@ -306,7 +306,7 @@
           label="Description"
           :values="values.description"
           rows="8"
-          disabled
+          readOnly
         />
       </div>
     </div>
