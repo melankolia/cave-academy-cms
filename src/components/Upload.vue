@@ -1,5 +1,6 @@
 <script setup>
   import { ref, computed } from "vue";
+
   import pdfIcon from "@/assets/pdf.png";
 
   const props = defineProps({
@@ -14,6 +15,8 @@
     },
   });
 
+  const emit = defineEmits(["cancelImage"]);
+
   const loadingUpload = ref(false);
   const fileInput = ref(null);
   const isDragOver = ref(false);
@@ -26,7 +29,7 @@
   const handleUpload = async () => {
     try {
       loadingUpload.value = true;
-      await uploadFn();
+      await props.uploadFn(files.value);
     } catch (error) {
       console.error(error);
     } finally {
@@ -36,6 +39,7 @@
 
   const handleCancel = () => {
     files.value = [];
+    emit("cancelImage");
   };
 
   const handleFileChange = (event, type) => {
@@ -95,6 +99,7 @@
 
   const handleRemove = (index) => {
     files.value = [...files.value.filter((_, i) => i !== index)];
+    emit("cancelImage");
   };
 
   const isFileAvail = computed(() => files.value.length > 0);
@@ -105,7 +110,7 @@
 
 <template>
   <div
-    class="drop-zone flex flex-col border border-[#d0d4da] rounded-xl p-6"
+    class="drop-zone flex flex-col border border-[#46464e] rounded-xl p-6"
     @dragover.prevent="onDragOver"
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"

@@ -1,17 +1,17 @@
 <script setup>
-  import { COURSE } from "@/router/constants";
-  import CourseService from "@/service/CourseService";
+  import { EVENT } from "@/router/constants";
+  import EventService from "@/service/EventService";
   import { FilterMatchMode } from "@primevue/core/api";
   import { useToast } from "primevue/usetoast";
   import { onMounted, reactive, ref, watch } from "vue";
   import { useRouter } from "vue-router";
 
   const router = useRouter();
-  const courseService = reactive(new CourseService());
+  const eventService = reactive(new EventService());
   const toast = useToast();
-  const courseData = ref();
-  const deleteCourseDialog = ref(false);
-  const course = ref(null);
+  const eventData = ref();
+  const deleteEventDialog = ref(false);
+  const event = ref({});
   const loading = ref(false);
   const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -30,16 +30,14 @@
   const getList = async () => {
     try {
       loading.value = true;
-      const {
-        data: { data, status },
-      } = await courseService.list({
+      const { data } = await eventService.list({
         page: options.value.currentPage,
         limit: options.value.rowsPage,
       });
 
-      if (status == "success") {
-        courseData.value = [...data];
-        totalRecords.value = data.length;
+      if (data.status === "success") {
+        eventData.value = data.data;
+        totalRecords.value = data.data.length;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -57,18 +55,18 @@
 
   const openNew = () => {
     router.push({
-      name: COURSE.CREATE,
+      name: EVENT.CREATE,
     });
   };
 
-  function confirmDeleteCourse(item) {
-    course.value = item;
-    deleteCourseDialog.value = true;
+  function confirmDeleteEvent(prod) {
+    event.value = prod;
+    deleteEventDialog.value = true;
   }
 
-  const editCourse = (item) => {
+  const editEvent = (item) => {
     router.push({
-      name: COURSE.UPDATE,
+      name: EVENT.UPDATE,
       params: {
         secureId: item.id,
       },
@@ -77,7 +75,7 @@
 
   const handleDetail = (item) => {
     router.push({
-      name: COURSE.DETAIL,
+      name: EVENT.DETAIL,
       params: {
         secureId: item.id,
       },
@@ -85,34 +83,32 @@
   };
 
   const loadingDelete = ref(false);
-  async function deleteCourse() {
+  async function deleteEvent() {
     try {
       loadingDelete.value = true;
-      const {
-        data: { data, status },
-      } = await courseService.delete(course.value?.id);
+      const { data } = await eventService.delete(event.value?.id);
 
-      if (status == "success") {
-        courseData.value = [
-          ...courseData.value.filter((val) => val.id !== course.value?.id),
-        ];
-        course.value = {};
-        deleteCourseDialog.value = false;
+      if (data.status === "success") {
+        eventData.value = eventData.value.filter(
+          (val) => val.id !== event.value?.id
+        );
+        event.value = {};
+        deleteEventDialog.value = false;
         toast.add({
           severity: "success",
           summary: "Successful",
-          detail: "Course Deleted",
+          detail: "Event Deleted",
           life: 3000,
         });
       } else {
         console.error(data);
-        throw new Error("Failed to Delete Course!");
+        throw new Error("Failed to Delete Event!");
       }
     } catch (error) {
       toast.add({
         severity: "error",
         summary: "Error Data",
-        detail: "Failed to Delete Course!",
+        detail: "Failed to Delete Event!",
         life: 3000,
       });
     } finally {
@@ -123,6 +119,16 @@
   const handlePage = (e) => {
     options.value.rowsPage = e.rows;
     options.value.currentPage = e.page;
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   watch(
@@ -151,13 +157,13 @@
 
       <DataTable
         :loading="loading"
-        :value="courseData"
+        :value="eventData"
         dataKey="id"
         :filters="filters"
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <p class="m-0">Manage Course</p>
+            <p class="m-0">Manage Event</p>
             <IconField>
               <InputIcon>
                 <i class="pi pi-search" />
@@ -169,9 +175,8 @@
             </IconField>
           </div>
         </template>
-        <template #empty> No Course found. </template>
-        <template #loading> Loading Course data. Please wait. </template>
-
+        <template #empty> No Event found. </template>
+        <template #loading> Loading Event data. Please wait. </template>
         <Column field="id" header="No" sortable style="min-width: 2rem" />
         <Column field="title" header="Title" sortable style="min-width: 16rem">
           <template #body="slotProps">
@@ -185,11 +190,20 @@
         <Column
           field="description"
           header="Description"
-          sortable
-          style="max-width: 16rem"
+          style="min-width: 20rem"
         >
           <template #body="slotProps">
-            <span class="line-clamp-2">{{ slotProps.data?.description }}</span>
+            <div class="line-clamp-2">{{ slotProps.data?.description }}</div>
+          </template>
+        </Column>
+        <Column header="Image" style="min-width: 12rem">
+          <template #body="slotProps">
+            <img
+              :src="slotProps.data?.imageUrl"
+              :alt="slotProps.data?.title"
+              class="rounded"
+              style="width: 128px"
+            />
           </template>
         </Column>
         <Column field="level" header="Level" sortable style="min-width: 8rem">
@@ -200,12 +214,30 @@
         <Column field="type" header="Type" sortable style="min-width: 8rem">
           <template #body="slotProps">
             <Tag
-              :value="slotProps.data?.type"
-              :severity="
-                slotProps.data?.type === 'online' ? 'success' : 'danger'
-              "
+              :value="slotProps.data?.isOnline ? 'online' : 'offline'"
+              :severity="slotProps.data?.isOnline ? 'success' : 'danger'"
               class="capitalize"
             />
+          </template>
+        </Column>
+        <Column
+          field="author.name"
+          header="Author"
+          sortable
+          style="min-width: 12rem"
+        >
+          <template #body="slotProps">
+            <Chip>{{ slotProps.data?.author?.name }}</Chip>
+          </template>
+        </Column>
+        <Column
+          field="createdAt"
+          header="Created At"
+          sortable
+          style="min-width: 14rem"
+        >
+          <template #body="slotProps">
+            {{ formatDate(slotProps.data?.createdAt) }}
           </template>
         </Column>
         <Column header="Action" style="min-width: 12rem">
@@ -215,18 +247,17 @@
               outlined
               rounded
               class="mr-2"
-              @click="editCourse(slotProps.data)"
+              @click="editEvent(slotProps.data)"
             />
             <Button
               icon="pi pi-trash"
               outlined
               rounded
               severity="danger"
-              @click="confirmDeleteCourse(slotProps.data)"
+              @click="confirmDeleteEvent(slotProps.data)"
             />
           </template>
         </Column>
-
         <template #footer>
           <Paginator
             @page="handlePage"
@@ -239,16 +270,15 @@
     </div>
 
     <Dialog
-      v-model:visible="deleteCourseDialog"
+      v-model:visible="deleteEventDialog"
       :style="{ width: '450px' }"
       header="Confirm"
       :modal="true"
     >
       <div class="flex items-center gap-4">
         <i class="pi pi-exclamation-triangle !text-3xl" />
-        <span v-if="course">
-          Are you sure you want to delete
-          <b>{{ course.title }} </b>?
+        <span v-if="event">
+          Are you sure you want to delete <b>{{ event.title }} </b>?
         </span>
       </div>
       <template #footer>
@@ -256,15 +286,24 @@
           label="No"
           icon="pi pi-times"
           text
-          @click="deleteCourseDialog = false"
+          @click="deleteEventDialog = false"
         />
         <Button
           label="Yes"
           icon="pi pi-check"
-          @click="deleteCourse"
+          @click="deleteEvent"
           :loading="loadingDelete"
         />
       </template>
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

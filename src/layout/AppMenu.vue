@@ -12,28 +12,9 @@
       label: "Content Management System",
       items: [
         {
-          label: "Sales Management",
+          label: "Student Management",
           icon: "pi pi-fw pi-users",
-          to: "/sales-management",
-        },
-        {
-          label: "Product",
-          icon: "pi pi-fw pi-box",
-          items: [
-            {
-              label: "Master",
-              to: "/product-master",
-            },
-            {
-              label: "Stock Management",
-              to: "/product-management",
-            },
-          ],
-        },
-        {
-          label: "Visitation",
-          icon: "pi pi-fw pi-map-marker",
-          to: "/visitation",
+          to: "/student-management",
         },
         {
           label: "Course",
@@ -41,7 +22,9 @@
           to: "/course",
         },
         // { label: "Boards", icon: "pi pi-fw pi-sitemap", to: "/board" },
-        // { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
+        { label: "News", icon: "pi pi-fw pi-megaphone", to: "/news" },
+        { label: "Event", icon: "pi pi-fw pi-calendar", to: "/event" },
+        { label: "Wiki", icon: "pi pi-fw pi-file-edit", to: "/wiki" },
       ],
     },
   ]);

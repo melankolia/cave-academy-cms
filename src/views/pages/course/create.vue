@@ -13,10 +13,13 @@
   // Components
   import SkeletonCard from "@/components/Skeleton/Card.vue";
   import CardCourse from "@/components/Card/CardCourse.vue";
+  import UploadImage from "@/components/Upload.vue";
 
   // Services and Constants
-  import { COURSE } from "@/router/constants";
+  import { COURSE, DASHBOARD } from "@/router/constants";
   import CourseService from "@/service/CourseService";
+  import FileUploadService from "@/service/FileUploadService";
+  import { LINK_PREVIEW } from "@/service/Instance/constants";
 
   // Form Validation
   import { toTypedSchema } from "@vee-validate/zod";
@@ -68,17 +71,19 @@
   const route = useRoute();
   const router = useRouter();
   const courseService = reactive(new CourseService());
+  const fileUploadService = reactive(new FileUploadService());
+
   const loadingSubmit = ref(false);
   const loading = ref(false);
   const editorInstance = ref(null);
 
   // Breadcrumb Setup
-  const breadcrumbHome = ref({ icon: "pi pi-home", to: "/" });
+  const breadcrumbHome = ref({ icon: "pi pi-home", route: DASHBOARD.LIST });
   const isUpdate = computed(() => {
     return route.params?.secureId;
   });
   const breadcrumbItems = ref([
-    { label: "Course List", url: "/course" },
+    { label: "Course List", route: COURSE.LIST },
     { label: "Course " + (isUpdate.value ? "Update" : "Create") },
   ]);
 
@@ -90,12 +95,25 @@
         description: zod
           .string()
           .min(1, { message: "Description is Required" }),
-        videoUrl: zod.string().min(1, { message: "Video URL is Required" }),
-        imageUrl: zod.string().min(1, { message: "Image URL is Required" }),
+        videoUrl: zod
+          .string()
+          .min(1, { message: "Video URL is Required" })
+          .url({ message: "Must be a valid URL" }),
+        imageUrl: zod
+          .string()
+          .min(1, { message: "Image URL is Required" })
+          .url({ message: "Must be a valid URL" }),
         level: zod.union([
           zod.string().min(1, { message: "Level is Required" }),
         ]),
-        type: zod.union([zod.string().min(1, { message: "Type is Required" })]),
+        type: zod
+          .union([
+            zod.string().min(1, { message: "Type is Required" }),
+            zod.null(),
+          ])
+          .refine((val) => val !== null, {
+            message: "Type is Required",
+          }),
         startDate: zod
           .date({
             required_error: "Start Date is Required",
@@ -178,6 +196,13 @@
     useField("startDate");
   const { value: endDate, errorMessage: endDateError } = useField("endDate");
 
+  const {
+    value: imageUrl,
+    setValue: setImageUrl,
+    meta: metaImage,
+    errorMessage: errorImage,
+  } = useField("imageUrl");
+
   // Editor Setup
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
@@ -186,7 +211,15 @@
       readOnly: false,
       autofocus: true,
       tools: {
-        header: Header,
+        header: {
+          class: Header,
+          config: {
+            placeholder: "Enter a header",
+            levels: [1, 2, 3, 4, 5, 6],
+            defaultLevel: 1,
+            shortcut: "CMD+SHIFT+H",
+          },
+        },
         list: List,
         image: SimpleImage,
         paragraph: {
@@ -196,9 +229,49 @@
         image: {
           class: ImageTool,
           config: {
-            endpoints: {
-              byFile: "http://localhost:8008/uploadFile",
-              byUrl: "http://localhost:8008/fetchUrl",
+            uploader: {
+              uploadByFile(file) {
+                // your own uploading logic here
+
+                const formData = new FormData();
+                formData.append("image", file);
+
+                return fileUploadService
+                  .upload(formData)
+                  .then(({ data }) => {
+                    if (data.success === 1) {
+                      toast.add({
+                        severity: "success",
+                        summary: "Success Data",
+                        detail: "Image uploaded successfully!",
+                        life: 3000,
+                      });
+
+                      return {
+                        success: 1,
+                        file: {
+                          url: data.file.url,
+                        },
+                      };
+                    } else {
+                      toast.add({
+                        severity: "error",
+                        summary: "Error Data",
+                        detail: "Failed to upload image!",
+                        life: 3000,
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error in uploadByFile:", error);
+                    toast.add({
+                      severity: "error",
+                      summary: "Error Data",
+                      detail: "Failed to upload image!",
+                      life: 3000,
+                    });
+                  });
+              },
             },
           },
         },
@@ -207,7 +280,7 @@
         linkTool: {
           class: LinkTool,
           config: {
-            endpoint: "http://localhost:8008/fetchUrl",
+            endpoint: LINK_PREVIEW,
           },
         },
         raw: RawTool,
@@ -768,6 +841,47 @@
       loading.value = false;
     }
   };
+
+  const onUpload = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
+
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
+
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
+        toast.add({
+          severity: "error",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
+          life: 3000,
+        });
+      });
+  };
+
+  const onCancelImage = () => {
+    setImageUrl(null);
+  };
 </script>
 
 <template>
@@ -778,7 +892,31 @@
           style="padding: 4px"
           :home="breadcrumbHome"
           :model="breadcrumbItems"
-        />
+        >
+          <template #item="{ item, props }">
+            <router-link
+              v-if="item.route"
+              v-slot="{ href, navigate }"
+              :to="{ name: item.route }"
+              custom
+            >
+              <a :href="href" v-bind="props.action" @click="navigate">
+                <span :class="[item.icon, 'text-color']" />
+                <span class="text-primary font-semibold">{{ item.label }}</span>
+              </a>
+            </router-link>
+            <a
+              v-else
+              :href="item.url"
+              :target="item.target"
+              v-bind="props.action"
+            >
+              <span class="text-surface-700 dark:text-surface-0">{{
+                item.label
+              }}</span>
+            </a>
+          </template>
+        </Breadcrumb>
       </template>
     </Toolbar>
     <div v-if="loading">
@@ -804,19 +942,20 @@
         label="Description"
         :values="courseData.description"
       />
-      <FieldText
-        className="flex flex-col flex-wrap gap-2 w-full"
-        name="imageUrl"
-        label="Image URL"
-        :values="courseData.imageUrl"
-      />
-      <div class="flex flex-col gap-4 w-full">
-        <FieldText
-          className="flex flex-col flex-wrap gap-2 w-full"
-          name="videoUrl"
-          label="Video URL"
-          :values="courseData.videoUrl"
+      <div class="flex flex-col">
+        <div class="mb-2">Image</div>
+        <UploadImage
+          :multiple="false"
+          :uploadFn="onUpload"
+          @cancelImage="onCancelImage"
         />
+        <small v-if="!metaImage.valid" class="text-red-500">{{
+          errorImage
+        }}</small>
+      </div>
+      <div v-if="imageUrl" class="flex flex-col">
+        <div class="mb-2">Image Preview</div>
+        <img :src="imageUrl" alt="Image Preview" class="w-full" />
       </div>
       <div class="grid grid-cols-12 gap-4">
         <div class="flex flex-col col-span-6 gap-2">
@@ -1216,5 +1355,19 @@
 
   :deep(.p-accordion-header-link) {
     cursor: pointer !important;
+  }
+
+  /* Dark mode overrides for link tool */
+  :deep(.link-tool__title) {
+    color: var(--text-color);
+  }
+
+  :deep(.link-tool__description) {
+    color: var(--text-secondary-color);
+  }
+
+  :deep(.link-tool__content) {
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
   }
 </style>

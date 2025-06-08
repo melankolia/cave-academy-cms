@@ -1,17 +1,20 @@
 <script setup>
-  import { NEWS } from "@/router/constants";
-  import NewsService from "@/service/NewsService";
+  import { WIKI } from "@/router/constants";
+  import WikiService from "@/service/WikiService";
+  import TopicService from "@/service/TopicService";
   import { FilterMatchMode } from "@primevue/core/api";
   import { useToast } from "primevue/usetoast";
   import { onMounted, reactive, ref, watch } from "vue";
   import { useRouter } from "vue-router";
 
   const router = useRouter();
-  const newsService = reactive(new NewsService());
+  const wikiService = reactive(new WikiService());
+  const topicService = reactive(new TopicService());
+
   const toast = useToast();
-  const newsData = ref();
-  const deleteNewsDialog = ref(false);
-  const news = ref({});
+  const wikiData = ref();
+  const deleteWikiDialog = ref(false);
+  const wiki = ref({});
   const loading = ref(false);
   const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -27,16 +30,18 @@
     getList();
   });
 
+  const expandedRows = ref({});
+
   const getList = async () => {
     try {
       loading.value = true;
-      const { data } = await newsService.list({
+      const { data } = await wikiService.list({
         page: options.value.currentPage,
         limit: options.value.rowsPage,
       });
 
       if (data.status === "success") {
-        newsData.value = data.data;
+        wikiData.value = data.data;
         totalRecords.value = data.data.length;
       } else {
         throw new Error("Failed to fetch data!");
@@ -55,18 +60,18 @@
 
   const openNew = () => {
     router.push({
-      name: NEWS.CREATE,
+      name: WIKI.CREATE,
     });
   };
 
-  function confirmDeleteNews(prod) {
-    news.value = prod;
-    deleteNewsDialog.value = true;
+  function confirmDeleteWiki(data) {
+    wiki.value = { ...data };
+    deleteWikiDialog.value = true;
   }
 
-  const editNews = (item) => {
+  const editWiki = (item) => {
     router.push({
-      name: NEWS.UPDATE,
+      name: WIKI.UPDATE,
       params: {
         secureId: item.id,
       },
@@ -75,40 +80,61 @@
 
   const handleDetail = (item) => {
     router.push({
-      name: NEWS.DETAIL,
+      name: WIKI.DETAIL,
       params: {
         secureId: item.id,
       },
     });
   };
 
+  const handleWikiDetail = (item) => {
+    const index = wikiData.value.findIndex((val) => val.id === item.topicId);
+
+    if (index == -1) {
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Topic not found!",
+        life: 3000,
+      });
+    }
+
+    router.push({
+      name: WIKI.DETAIL,
+      params: {
+        secureId: wikiData.value[index].id,
+      },
+    });
+  };
+
   const loadingDelete = ref(false);
-  async function deleteNews() {
+  async function deleteWiki() {
     try {
       loadingDelete.value = true;
-      const { data } = await newsService.delete(news.value?.id);
+
+      const { data } = await topicService.delete(wiki.value?.id);
 
       if (data.status === "success") {
-        newsData.value = newsData.value.filter(
-          (val) => val.id !== news.value?.id
+        wikiData.value = wikiData.value.filter(
+          (val) => val.id !== wiki.value?.id
         );
-        news.value = {};
-        deleteNewsDialog.value = false;
+        wiki.value = {};
+        deleteWikiDialog.value = false;
         toast.add({
           severity: "success",
           summary: "Successful",
-          detail: "News Deleted",
+          detail: "Wiki Deleted",
           life: 3000,
         });
       } else {
         console.error(data);
-        throw new Error("Failed to Delete News!");
+        throw new Error("Failed to Delete Wiki!");
       }
     } catch (error) {
       toast.add({
         severity: "error",
         summary: "Error Data",
-        detail: "Failed to Delete News!",
+        detail: "Failed to Delete Wiki!",
         life: 3000,
       });
     } finally {
@@ -157,13 +183,14 @@
 
       <DataTable
         :loading="loading"
-        :value="newsData"
+        :value="wikiData"
         dataKey="id"
         :filters="filters"
+        v-model:expandedRows="expandedRows"
       >
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <p class="m-0">Manage News</p>
+            <p class="m-0">Manage Wiki</p>
             <IconField>
               <InputIcon>
                 <i class="pi pi-search" />
@@ -175,10 +202,11 @@
             </IconField>
           </div>
         </template>
-        <template #empty> No News found. </template>
-        <template #loading> Loading News data. Please wait. </template>
+        <template #empty> No Wiki found. </template>
+        <template #loading> Loading Wiki data. Please wait. </template>
+        <Column expander style="width: 5rem" />
         <Column field="id" header="No" sortable style="min-width: 2rem" />
-        <Column field="title" header="Title" sortable style="min-width: 16rem">
+        <Column field="title" header="Topic" sortable style="min-width: 16rem">
           <template #body="slotProps">
             <Button
               :label="slotProps.data?.title"
@@ -196,36 +224,6 @@
             <div class="line-clamp-2">{{ slotProps.data?.description }}</div>
           </template>
         </Column>
-        <Column header="Image" style="min-width: 12rem">
-          <template #body="slotProps">
-            <img
-              :src="slotProps.data?.imageUrl"
-              :alt="slotProps.data?.title"
-              class="rounded"
-              style="width: 128px"
-            />
-          </template>
-        </Column>
-        <Column
-          field="author.name"
-          header="Author"
-          sortable
-          style="min-width: 12rem"
-        >
-          <template #body="slotProps">
-            <Chip>{{ slotProps.data?.author?.name }}</Chip>
-          </template>
-        </Column>
-        <Column
-          field="createdAt"
-          header="Created At"
-          sortable
-          style="min-width: 14rem"
-        >
-          <template #body="slotProps">
-            {{ formatDate(slotProps.data?.createdAt) }}
-          </template>
-        </Column>
         <Column header="Action" style="min-width: 12rem">
           <template #body="slotProps">
             <Button
@@ -233,17 +231,76 @@
               outlined
               rounded
               class="mr-2"
-              @click="editNews(slotProps.data)"
+              @click="editWiki(slotProps.data)"
             />
             <Button
               icon="pi pi-trash"
               outlined
               rounded
               severity="danger"
-              @click="confirmDeleteNews(slotProps.data)"
+              @click="confirmDeleteWiki(slotProps.data)"
             />
           </template>
         </Column>
+        <template #expansion="slotProps">
+          <div class="p-4">
+            <p class="py-2.5">Wiki List</p>
+            <DataTable
+              :value="slotProps.data.wiki"
+              paginator
+              :rows="5"
+              :rowsPerPageOptions="[5, 10, 20, 50]"
+            >
+              <Column field="title" header="Title" sortable>
+                <template #body="slotProps">
+                  <Button
+                    :label="slotProps.data?.title"
+                    link
+                    @click="() => handleWikiDetail(slotProps.data)"
+                  />
+                </template>
+              </Column>
+              <Column field="description" header="Description" sortable>
+                <template #body="slotProps">
+                  <div class="line-clamp-2">
+                    {{ slotProps.data?.description }}
+                  </div>
+                </template>
+              </Column>
+              <Column header="Thumbnail" style="min-width: 12rem">
+                <template #body="slotProps">
+                  <img
+                    :src="slotProps.data?.thumbnailUrl"
+                    :alt="slotProps.data?.title"
+                    class="rounded"
+                    style="width: 128px"
+                  />
+                </template>
+              </Column>
+
+              <Column
+                field="user.name"
+                header="Author"
+                sortable
+                style="min-width: 12rem"
+              >
+                <template #body="slotProps">
+                  <Chip>{{ slotProps.data?.user?.name }}</Chip>
+                </template>
+              </Column>
+              <Column
+                field="createdAt"
+                header="Created At"
+                sortable
+                style="min-width: 14rem"
+              >
+                <template #body="slotProps">
+                  {{ formatDate(slotProps.data?.createdAt) }}
+                </template>
+              </Column>
+            </DataTable>
+          </div>
+        </template>
         <template #footer>
           <Paginator
             @page="handlePage"
@@ -256,15 +313,15 @@
     </div>
 
     <Dialog
-      v-model:visible="deleteNewsDialog"
+      v-model:visible="deleteWikiDialog"
       :style="{ width: '450px' }"
       header="Confirm"
       :modal="true"
     >
       <div class="flex items-center gap-4">
         <i class="pi pi-exclamation-triangle !text-3xl" />
-        <span v-if="news">
-          Are you sure you want to delete <b>{{ news.title }} </b>?
+        <span v-if="wiki">
+          Are you sure you want to delete <b>{{ wiki.title }} </b>?
         </span>
       </div>
       <template #footer>
@@ -272,12 +329,12 @@
           label="No"
           icon="pi pi-times"
           text
-          @click="deleteNewsDialog = false"
+          @click="deleteWikiDialog = false"
         />
         <Button
           label="Yes"
           icon="pi pi-check"
-          @click="deleteNews"
+          @click="deleteWiki"
           :loading="loadingDelete"
         />
       </template>

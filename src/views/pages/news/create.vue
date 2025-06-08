@@ -1,112 +1,226 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
-  import { NEWS } from "@/router/constants";
+  import UploadImage from "@/components/Upload.vue";
+  import { DASHBOARD, NEWS } from "@/router/constants";
   import NewsService from "@/service/NewsService";
+  import FileUploadService from "@/service/FileUploadService";
+  import { LINK_PREVIEW } from "@/service/Instance/constants";
+
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
   import { useField, useForm } from "vee-validate";
-  import { computed, onMounted, reactive, ref, watch } from "vue";
+  import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import * as zod from "zod";
 
+  // Editor.js and plugins
+  import EditorJS from "@editorjs/editorjs";
+  import Header from "@editorjs/header";
+  import List from "@editorjs/list";
+  import SimpleImage from "@editorjs/simple-image";
+  import Paragraph from "@editorjs/paragraph";
+  import ImageTool from "@editorjs/image";
+  import CodeTool from "@editorjs/code";
+  import Underline from "@editorjs/underline";
+  import LinkTool from "@editorjs/link";
+  import RawTool from "@editorjs/raw";
+  import Embed from "@editorjs/embed";
+  import Quote from "@editorjs/quote";
+
   const newsData = ref({
     title: "",
-    description: "",
-    photos: "",
-    thumbnails: "",
-    videoUrl: "",
-    isVideo: false,
-    tags: "",
     content: "",
+    imageUrl: "",
+    description: "",
   });
 
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
-  const photo = ref(null);
-  const video = ref(null);
-  const thumbnail = ref(null);
-  const username = ref("admin");
   const newsService = reactive(new NewsService());
+  const fileUploadService = reactive(new FileUploadService());
+
   const loadingSubmit = ref(false);
   const loading = ref(false);
-  const validateYoutubeError = ref(
-    "Please enter your video url using youtube url"
-  );
+  const editorInstance = ref(null);
 
   const validationSchema = toTypedSchema(
     zod.object({
       title: zod.string().min(1, { message: "Title is Required" }),
+      content: zod
+        .string({
+          required_error: "Content is Required",
+          invalid_type_error: "Content must be a string",
+        })
+        .min(1, { message: "Content cannot be empty" })
+        .refine(
+          (val) => {
+            if (!val) return false;
+            try {
+              const parsed = JSON.parse(val);
+              return (
+                parsed &&
+                parsed.blocks &&
+                Array.isArray(parsed.blocks) &&
+                parsed.blocks.length > 0
+              );
+            } catch {
+              return false;
+            }
+          },
+          { message: "Please add some content to the editor" }
+        ),
+      imageUrl: zod
+        .string()
+        .min(1, { message: "Image URL is Required" })
+        .url({ message: "Must be a valid URL" }),
       description: zod.string().min(1, { message: "Description is Required" }),
-      thumbnails: zod.string().min(1, { message: "Thumbnail is Required" }),
-      tags: zod.union([
-        zod.string().min(1, { message: "Tag's is Required" }),
-        zod
-          .string()
-          .array()
-          .nonempty({ message: "Atleast one tag is required" }),
-      ]),
-      videoUrl: zod.string().optional().nullable(),
-      isVideo: zod.boolean().optional(),
-      photos: zod.string().nullable(),
-      content: zod.string().nullable(),
     })
   );
-  const { handleSubmit } = useForm({
+
+  const { handleSubmit, errors } = useForm({
     validationSchema,
   });
 
   const {
-    setValue: setThumbnail,
-    meta: metaThumbnail,
-    errorMessage: errorThumbnail,
-  } = useField("thumbnails");
-  const {
-    value: existingPhotos,
-    setValue: setPhotos,
-    meta: metaPhotos,
-    errorMessage: errorPhotos,
-  } = useField("photos");
-  const { setValue: setVideoUrl } = useField("videoUrl");
+    value: content,
+    errorMessage: contentError,
+    setValue: setValueContent,
+    meta: contentMeta,
+    setTouched: setContentTouched,
+  } = useField("content");
 
-  const breadcrumbHome = ref({ icon: "pi pi-home", to: "/" });
+  const {
+    value: imageUrl,
+    setValue: setImageUrl,
+    meta: metaImage,
+    errorMessage: errorImage,
+  } = useField("imageUrl");
+
+  const breadcrumbHome = ref({ icon: "pi pi-home", route: DASHBOARD.LIST });
 
   const isUpdate = computed(() => {
     return route.params?.secureId;
   });
+
   const breadcrumbItems = ref([
-    { label: "News List", url: "/news" },
+    { label: "News List", route: NEWS.LIST },
     { label: "News " + (isUpdate.value ? "Update" : "Create") },
   ]);
 
-  onMounted(async () => {
-    if (!isUpdate.value) return;
+  // Editor Setup
+  const initEditor = async () => {
+    editorInstance.value = new EditorJS({
+      holder: "editorjs",
+      placeholder: "Let's write an awesome story!",
+      readOnly: false,
+      autofocus: true,
+      tools: {
+        header: {
+          class: Header,
+          config: {
+            placeholder: "Enter a header",
+            levels: [1, 2, 3, 4, 5, 6],
+            defaultLevel: 1,
+            shortcut: "CMD+SHIFT+H",
+          },
+        },
+        list: List,
+        image: SimpleImage,
+        paragraph: {
+          class: Paragraph,
+          inlineToolbar: true,
+        },
+        image: {
+          class: ImageTool,
+          config: {
+            uploader: {
+              uploadByFile(file) {
+                // your own uploading logic here
 
+                const formData = new FormData();
+                formData.append("image", file);
+
+                return fileUploadService
+                  .upload(formData)
+                  .then(({ data }) => {
+                    if (data.success === 1) {
+                      toast.add({
+                        severity: "success",
+                        summary: "Success Data",
+                        detail: "Image uploaded successfully!",
+                        life: 3000,
+                      });
+
+                      return {
+                        success: 1,
+                        file: {
+                          url: data.file.url,
+                        },
+                      };
+                    } else {
+                      toast.add({
+                        severity: "error",
+                        summary: "Error Data",
+                        detail: "Failed to upload image!",
+                        life: 3000,
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error("Error in uploadByFile:", error);
+                    toast.add({
+                      severity: "error",
+                      summary: "Error Data",
+                      detail: "Failed to upload image!",
+                      life: 3000,
+                    });
+                  });
+              },
+            },
+          },
+        },
+        code: CodeTool,
+        underline: Underline,
+        linkTool: {
+          class: LinkTool,
+          config: {
+            endpoint: LINK_PREVIEW,
+          },
+        },
+        raw: RawTool,
+        embed: Embed,
+        quote: Quote,
+      },
+      data: newsData.value.content ? JSON.parse(newsData.value.content) : {},
+      onChange: async () => {
+        try {
+          const outputData = await editorInstance.value.save();
+          const jsonString = JSON.stringify(outputData);
+          await setValueContent(jsonString);
+          await setContentTouched(true);
+        } catch (error) {
+          console.error("Error in onChange:", error);
+        }
+      },
+    });
+  };
+
+  onMounted(async () => {
+    if (isUpdate.value) await getDetail();
+
+    await initEditor();
+  });
+
+  const getDetail = async () => {
     try {
       loading.value = true;
-      const secureId = route.params?.secureId;
+      const id = route.params?.secureId;
 
-      const {
-        data: { result, message },
-      } = await newsService.details(secureId);
-      if (message == "OK") {
-        if (result.tagResponseVos.length > 0) {
-          const tagResponseVos = result.tagResponseVos.map(
-            (tagResponseVo) => tagResponseVo.name
-          );
-          result.tags = [...tagResponseVos];
-        }
-
-        result.photos =
-          result.photoVos.length > 0 ? result.photoVos[0].photo : null;
-        result.isVideo = !!result.videoUrl;
-        result.videos = result.videoUrl;
-        result.thumbnails = result.thumbnail;
-
-        setThumbnail(result.thumbnail);
-        setPhotos(result.photos);
-        setVideoUrl(result.videos);
-
+      const { data } = await newsService.details(id);
+      if (data.status === "success") {
+        const result = data.data;
+        setImageUrl(result.imageUrl);
         newsData.value = result;
       } else {
         throw new Error("Failed to fetch data!");
@@ -122,82 +236,53 @@
     } finally {
       loading.value = false;
     }
+  };
+
+  onBeforeUnmount(() => {
+    if (editorInstance.value) {
+      editorInstance.value.destroy();
+    }
   });
 
-  const setValueVideoUrl = (params) => {
-    newsData.value.videoUrl = params;
-    setVideoUrl(params);
-  };
+  const onUpload = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
 
-  const onUpload = async (event, type = "photo") => {
-    if (event?.xhr?.status == 200) {
-      try {
-        const { result } = await JSON.parse(event.xhr.response);
-        let photos = [];
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
 
-        switch (type) {
-          case "photo":
-            photos = result.map((e) => e.path);
-
-            if (existingPhotos.value)
-              photos = [existingPhotos.value, ...photos];
-
-            photos = photos.join(";");
-
-            newsData.value.photos = photos;
-            setPhotos(photos);
-            break;
-          case "thumbnail":
-            newsData.value.thumbnails = result.thumbnailUri;
-            setThumbnail(result.thumbnailUri);
-            break;
-          default:
-            break;
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
         }
-
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "File Uploaded",
-          life: 3000,
-        });
-      } catch (error) {
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
         toast.add({
           severity: "error",
-          summary: "Upload Failed",
-          detail: "Photos Upload Failed",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
           life: 3000,
         });
-      }
-    }
+      });
   };
 
-  const handlePhotosError = () => {
-    photo.value.clear();
-    toast.add({
-      severity: "error",
-      summary: "Upload Failed",
-      detail: "Photos Upload Failed",
-      life: 3000,
-    });
-  };
-
-  const handlePhotoRemove = () => {
-    newsData.value.photos = null;
-  };
-
-  const handleThumbnailsError = () => {
-    video.value.clear();
-    toast.add({
-      severity: "error",
-      summary: "Upload Failed",
-      detail: "Thumbnails Upload Failed",
-      life: 3000,
-    });
-  };
-
-  const handleThumbnailRemove = () => {
-    newsData.value.thumbnails = null;
+  const onCancelImage = () => {
+    setImageUrl(null);
   };
 
   const onCancel = () => {
@@ -209,103 +294,57 @@
   const saveData = handleSubmit(async (values) => {
     try {
       loadingSubmit.value = true;
+
+      // Get the editor content
+      let editorContent = "";
+      if (editorInstance.value) {
+        const outputData = await editorInstance.value.save();
+        editorContent = JSON.stringify(outputData);
+      }
+
       const payload = {
         title: values?.title,
+        content: editorContent || values?.content,
         description: values?.description,
-        videoUrl: values?.videoUrl,
-        isVideo: values?.isVideo,
-        tags: values?.tags?.join(","),
-        photos: values?.photos,
-        thumbnail: values?.thumbnails,
-        content: values?.content,
+        imageUrl: values?.imageUrl,
       };
 
       let type = "create";
       if (isUpdate.value) type = "update";
 
-      const secureId = newsData.value?.secureId;
+      const id = newsData.value?.id;
 
       const {
-        data: { result, message },
-      } = await newsService[type](payload, secureId);
+        data: { data, status },
+      } = await newsService[type](payload, id);
 
-      if (message == "OK") {
+      if (status === "success") {
         toast.add({
           severity: "success",
           summary: "Successful",
-          detail: "News " + isUpdate.value ? "Updated" : "Created",
+          detail: `News ${isUpdate.value ? "Updated" : "Created"}`,
           life: 3000,
         });
         router.replace({
           name: NEWS.DETAIL,
           params: {
-            secureId: result.secureId,
+            secureId: data.id,
           },
         });
+      } else {
+        throw new Error(`News ${isUpdate.value ? "Update" : "Create"} Failed`);
       }
     } catch (error) {
       toast.add({
         severity: "error",
         summary: "Failed",
-        detail: "News " + (isUpdate.value ? "Updated" : "Created") + "Failed",
+        detail: error.message,
         life: 3000,
       });
     } finally {
       loadingSubmit.value = false;
     }
   });
-
-  const setErrorYoutubeUrl = (cb) => {
-    newsData.value.isVideo = false;
-    newsData.value.videoUrl = null;
-    setVideoUrl(null);
-
-    cb && cb();
-  };
-
-  const isYoutubeURL = computed(
-    () => validateYoutubeError.value == "This is a youtube link"
-  );
-
-  const validateYoutubeUrl = (params = "") => {
-    if (!params) {
-      setErrorYoutubeUrl(
-        () =>
-          (validateYoutubeError.value =
-            "Please enter your video url using youtube url")
-      );
-      return;
-    }
-
-    const youtubeEmbedTemplate = "https://www.youtube.com/embed/";
-    const url = params.split(/(vi\/|v%3D|v=|\/v\/|youtu\.be\/|\/embed\/)/);
-    const YId =
-      undefined !== url[2] ? url[2].split(/[^0-9a-z_/\\-]/i)[0] : url[0];
-
-    console.log(YId === url[0]);
-
-    if (YId === url[0]) {
-      setErrorYoutubeUrl(
-        () =>
-          (validateYoutubeError.value =
-            "This is not a youtube link, Please enter your youtube url")
-      );
-      return;
-    }
-
-    validateYoutubeError.value = "This is a youtube link.";
-    newsData.value.isVideo = true;
-    newsData.value.videoUrl = youtubeEmbedTemplate.concat(YId);
-    setVideoUrl(youtubeEmbedTemplate.concat(YId));
-  };
-
-  watch(
-    () => newsData.value.videoUrl,
-    (newVal) => {
-      if (newVal) validateYoutubeUrl(newVal);
-    },
-    { deep: true }
-  );
 </script>
 
 <template>
@@ -316,15 +355,42 @@
           style="padding: 4px"
           :home="breadcrumbHome"
           :model="breadcrumbItems"
-        />
+        >
+          <template #item="{ item, props }">
+            <router-link
+              v-if="item.route"
+              v-slot="{ href, navigate }"
+              :to="{ name: item.route }"
+              custom
+            >
+              <a :href="href" v-bind="props.action" @click="navigate">
+                <span :class="[item.icon, 'text-color']" />
+                <span class="text-primary font-semibold">{{ item.label }}</span>
+              </a>
+            </router-link>
+            <a
+              v-else
+              :href="item.url"
+              :target="item.target"
+              v-bind="props.action"
+            >
+              <span class="text-surface-700 dark:text-surface-0">{{
+                item.label
+              }}</span>
+            </a>
+          </template>
+        </Breadcrumb>
       </template>
     </Toolbar>
-    <div v-if="loading">
-      <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
-      <SkeletonCard />
-    </div>
-    <template v-else>
-      <div class="font-semibold text-2xl mt-8 mb-6">
+  </div>
+
+  <div v-if="loading">
+    <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
+    <SkeletonCard />
+  </div>
+  <template v-else>
+    <div class="card mb-2">
+      <div class="font-semibold text-2xl mb-8">
         {{ isUpdate ? "Update" : "Create" }} News
       </div>
       <div class="flex flex-col gap-4 w-full">
@@ -334,92 +400,98 @@
           label="Title"
           :values="newsData.title"
         />
+        <div class="flex flex-col">
+          <div class="mb-2">Image</div>
+          <UploadImage
+            :multiple="false"
+            :uploadFn="onUpload"
+            @cancelImage="onCancelImage"
+          />
+          <small v-if="!metaImage.valid" class="text-red-500">{{
+            errorImage
+          }}</small>
+        </div>
+        <div v-if="imageUrl" class="flex flex-col">
+          <div class="mb-2">Image Preview</div>
+          <img :src="imageUrl" alt="Image Preview" class="w-full" />
+        </div>
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
           :values="newsData.description"
-        />
-        <FieldAutoComplete
-          className="flex flex-col"
-          name="tags"
-          :values="newsData.tags"
-        />
-        <div class="flex flex-col">
-          <div class="mb-2">Photo's</div>
-          <FileUpload
-            @error="handlePhotosError"
-            :url="`/micro-api/image/upload?username=${username}`"
-            ref="photo"
-            name="photos"
-            @upload="onUpload($event, 'photo')"
-            accept="image/*"
-            @clear="handlePhotoRemove"
-            @remove="handlePhotoRemove"
-            :maxFileSize="1000000"
-          />
-          <small v-if="!metaPhotos.valid" class="text-red-500">{{
-            errorPhotos
-          }}</small>
-        </div>
-
-        <div class="flex flex-col">
-          <div class="flex flex-col flex-wrap gap-2 w-full">
-            <label for="video">Video Url</label>
-            <InputText
-              id="video"
-              type="text"
-              :model-value="newsData.videoUrl"
-              @update:model-value="setValueVideoUrl"
-            />
-            <small
-              :class="{ 'text-green-600': isYoutubeURL }"
-              id="video-help"
-              >{{ validateYoutubeError }}</small
-            >
-          </div>
-        </div>
-        <div class="flex flex-col">
-          <div class="mb-2">Thumbnail</div>
-          <FileUpload
-            @error="handleThumbnailsError"
-            :url="`/micro-api/thumbnail/upload?username=${username}`"
-            ref="thumbnail"
-            name="thumbnails"
-            @upload="onUpload($event, 'thumbnail')"
-            accept="image/*"
-            @clear="handleThumbnailRemove"
-            @remove="handleThumbnailRemove"
-            :maxFileSize="1000000"
-          />
-          <small v-if="!metaThumbnail.valid" class="text-red-500">{{
-            errorThumbnail
-          }}</small>
-        </div>
-        <FieldTextArea
-          className="flex flex-col flex-wrap gap-2 w-full"
-          name="content"
-          label="Content"
-          :values="newsData.content"
           rows="8"
         />
       </div>
+    </div>
 
-      <div class="flex flex-row justify-end mt-16 gap-4">
-        <Button
-          label="Cancel"
-          icon="pi pi-times"
-          severity="danger"
-          text
-          @click="onCancel"
-        />
-        <Button
-          label="Submit"
-          icon="pi pi-check"
-          @click="saveData"
-          :loading="loadingSubmit"
-        />
+    <div class="card surface-ground py-5 mt-4">
+      <div class="flex flex-col">
+        <div class="mb-2">Content</div>
+        <div id="editorjs" class="editor-wrapper"></div>
+        <small v-if="contentError" class="text-red-500">{{
+          contentError
+        }}</small>
       </div>
-    </template>
-  </div>
+    </div>
+
+    <div class="card surface-ground py-5 mt-4">
+      <div class="flex justify-end px-4">
+        <div class="flex gap-3">
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            severity="secondary"
+            class="w-[130px]"
+            outlined
+            @click="onCancel"
+          />
+          <Button
+            label="Save News"
+            icon="pi pi-check"
+            severity="primary"
+            class="w-[130px]"
+            @click="saveData"
+            :loading="loadingSubmit"
+          />
+        </div>
+      </div>
+    </div>
+  </template>
 </template>
+
+<style scoped>
+  .editor-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .editor-wrapper {
+    width: 100%;
+    min-height: 300px;
+    border-radius: 0.375rem;
+    padding: 1rem;
+  }
+
+  /* Make the editor responsive */
+  @media (max-width: 768px) {
+    .editor-wrapper {
+      padding: 0.5rem;
+    }
+  }
+
+  /* Dark mode overrides for link tool */
+  :deep(.link-tool__title) {
+    color: var(--text-color);
+  }
+
+  :deep(.link-tool__description) {
+    color: var(--text-secondary-color);
+  }
+
+  :deep(.link-tool__content) {
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
+  }
+</style>

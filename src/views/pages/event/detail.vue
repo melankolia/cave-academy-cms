@@ -1,17 +1,19 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
-  import { COURSE, DASHBOARD } from "@/router/constants";
-  import CourseService from "@/service/CourseService";
+  import { DASHBOARD, EVENT } from "@/router/constants";
+  import EventService from "@/service/EventService";
   import FileUploadService from "@/service/FileUploadService";
   import { LINK_PREVIEW } from "@/service/Instance/constants";
 
+  import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
-  import { onMounted, reactive, ref } from "vue";
+  import { useField, useForm } from "vee-validate";
+  import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
   import { useRoute, useRouter } from "vue-router";
+  import * as zod from "zod";
   import { useConfirm } from "primevue/useconfirm";
-  import { useForm } from "vee-validate";
-  import Calendar from "primevue/calendar";
 
+  // Editor.js and plugins
   import EditorJS from "@editorjs/editorjs";
   import Header from "@editorjs/header";
   import List from "@editorjs/list";
@@ -25,34 +27,17 @@
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
 
-  const router = useRouter();
-  const route = useRoute();
-  const toast = useToast();
-  const confirm = useConfirm();
-  const courseService = reactive(new CourseService());
-  const fileUploadService = reactive(new FileUploadService());
-  const loading = ref(false);
-  const editorInstance = ref(null);
-
-  const breadcrumbHome = ref({ icon: "pi pi-home", route: DASHBOARD.LIST });
-  const breadcrumbItems = ref([
-    { label: "Course List", route: COURSE.LIST },
-    { label: "Course Detail" },
-  ]);
-
-  const loadingDelete = ref(false);
-
-  const courseData = ref({
-    id: 1,
+  const eventData = ref({
     title: "",
-    description: "",
-    level: "",
-    type: "",
     content: "",
-    startDate: null,
-    endDate: null,
-    videoUrl: "",
     imageUrl: "",
+    description: "",
+    author: {
+      id: null,
+      name: "",
+      username: "",
+      role: "",
+    },
   });
 
   const courseType = ref([
@@ -66,14 +51,88 @@
     { label: "Expert", value: "expert" },
   ]);
 
-  const contentCovered = ref([]);
+  const toast = useToast();
+  const router = useRouter();
+  const route = useRoute();
+  const eventService = reactive(new EventService());
+  const fileUploadService = reactive(new FileUploadService());
 
-  const { setFieldValue, values } = useForm();
+  const loading = ref(false);
+  const editorInstance = ref(null);
+  const disabled = ref(true);
+  const loadingDelete = ref(false);
+  const confirm = useConfirm();
 
+  const validationSchema = toTypedSchema(
+    zod.object({
+      title: zod.string().min(1, { message: "Title is Required" }),
+      author: zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        username: zod.string(),
+        role: zod.string(),
+      }),
+      content: zod
+        .string({
+          required_error: "Content is Required",
+          invalid_type_error: "Content must be a string",
+        })
+        .min(1, { message: "Content cannot be empty" })
+        .refine(
+          (val) => {
+            if (!val) return false;
+            try {
+              const parsed = JSON.parse(val);
+              return (
+                parsed &&
+                parsed.blocks &&
+                Array.isArray(parsed.blocks) &&
+                parsed.blocks.length > 0
+              );
+            } catch {
+              return false;
+            }
+          },
+          { message: "Please add some content to the editor" }
+        ),
+      // imageUrl: zod.string().min(1, { message: "Image is Required" }),
+      description: zod.string().min(1, { message: "Description is Required" }),
+    })
+  );
+
+  const { handleSubmit, errors } = useForm({
+    validationSchema,
+  });
+
+  const {
+    value: content,
+    errorMessage: contentError,
+    setValue: setValueContent,
+    meta: contentMeta,
+    setTouched: setContentTouched,
+  } = useField("content");
+
+  const {
+    value: imageUrl,
+    setValue: setImageUrl,
+    meta: metaImage,
+    errorMessage: errorImage,
+  } = useField("imageUrl");
+
+  const breadcrumbHome = ref({ icon: "pi pi-home", route: DASHBOARD.LIST });
+
+  const breadcrumbItems = ref([
+    { label: "Event List", route: EVENT.LIST },
+    { label: "Event Detail" },
+  ]);
+
+  // Editor Setup
   const initEditor = async () => {
     editorInstance.value = new EditorJS({
       holder: "editorjs",
-      readOnly: true,
+      placeholder: "Let's write an awesome story!",
+      readOnly: disabled.value,
+      autofocus: !disabled.value,
       tools: {
         header: {
           class: Header,
@@ -151,98 +210,78 @@
         embed: Embed,
         quote: Quote,
       },
-      data: courseData.value.content
-        ? JSON.parse(courseData.value.content)
-        : {},
+      data: eventData.value.content ? JSON.parse(eventData.value.content) : {},
+      onChange: async () => {
+        if (disabled.value) return;
+        try {
+          const outputData = await editorInstance.value.save();
+          const jsonString = JSON.stringify(outputData);
+          await setValueContent(jsonString);
+          await setContentTouched(true);
+        } catch (error) {
+          console.error("Error in onChange:", error);
+        }
+      },
     });
   };
+
+  onMounted(async () => {
+    await getDetail();
+    await initEditor();
+  });
 
   const getDetail = async () => {
     try {
       loading.value = true;
-      const secureId = route.params?.secureId;
+      const id = route.params?.secureId;
 
-      const response = await courseService.details(secureId);
+      const { data } = await eventService.details(id);
+      if (data.status === "success") {
+        const result = data.data;
 
-      const {
-        data: { data: course, status },
-      } = response;
-
-      if (status == "success") {
-        setFieldValue("title", course?.title || "");
-        setFieldValue("description", course?.description || "");
-        setFieldValue("videoUrl", course?.videoUrl || "");
-        setFieldValue("imageUrl", course?.imageUrl || "");
-        setFieldValue("startDate", course?.startDate || null);
-        setFieldValue("endDate", course?.endDate || null);
-
-        // Basic course information
-        courseData.value = {
-          id: course?.id || 0,
-          title: course?.title || "",
-          description: course?.description || "",
-          videoUrl: course?.videoUrl || "",
-          imageUrl: course?.imageUrl || "",
-          level: course?.level || "",
-          type: course?.type || "",
-          content: course?.content || "",
-          startDate: course?.startDate ? new Date(course.startDate) : null,
-          endDate: course?.endDate ? new Date(course.endDate) : null,
-        };
-
-        // Handle content covered
-        contentCovered.value = Array.isArray(course?.contentCovered)
-          ? course.contentCovered
-          : [];
-
-        // Initialize Editor with content if available
-        if (editorInstance.value && course?.content) {
-          try {
-            const parsedContent =
-              typeof course.content === "string"
-                ? JSON.parse(course.content)
-                : course.content;
-            editorInstance.value.render(parsedContent);
-          } catch (error) {
-            console.error("Error rendering editor content:", error);
-          }
-        }
-
-        console.log("Content Covered:", contentCovered.value);
+        result.type = result.isOnline ? "online" : "offline";
+        setImageUrl(result.imageUrl);
+        eventData.value = result;
       } else {
         throw new Error("Failed to fetch data!");
       }
     } catch (error) {
-      console.error("Error in getDetail:", error);
       toast.add({
         severity: "error",
         summary: "Error Data",
-        detail: error.message || "Failed to fetch data!",
+        detail: "Failed to fetch data!",
         life: 3000,
       });
+      router.back();
     } finally {
       loading.value = false;
     }
   };
 
-  const onBack = () => {
-    router.push({
-      name: COURSE.LIST,
+  onBeforeUnmount(() => {
+    if (editorInstance.value) {
+      editorInstance.value.destroy();
+    }
+  });
+
+  const onCancel = () => {
+    router.replace({
+      name: EVENT.LIST,
     });
   };
 
   const onEdit = () => {
     router.push({
-      name: COURSE.UPDATE,
+      name: EVENT.UPDATE,
       params: {
-        secureId: route.params?.secureId,
+        secureId: route.params.secureId,
       },
     });
   };
 
-  const onDelete = (item) => {
+  const onDelete = () => {
     confirm.require({
-      message: "Are you sure you want to delete this course?",
+      message: `Are you sure you want to delete ${eventData.value.title}?`,
       header: "Delete Confirmation",
       icon: "pi pi-exclamation-triangle",
       rejectProps: {
@@ -255,40 +294,42 @@
         severity: "danger",
       },
       accept: () => {
-        deleteCourse();
+        deleteEvent();
       },
     });
   };
 
-  const deleteCourse = async () => {
-    const secureId = route.params?.secureId;
+  async function deleteEvent() {
     try {
       loadingDelete.value = true;
-      const {
-        data: { status },
-      } = await courseService.delete(secureId);
-      if (status == "success") {
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "Course deleted successfully",
+      const { data } = await eventService.delete(route.params?.secureId);
+
+      if (data.status === "success") {
+        router.replace({
+          name: EVENT.LIST,
         });
 
-        router.replace({
-          name: COURSE.LIST,
+        toast.add({
+          severity: "success",
+          summary: "Successful",
+          detail: "Event Deleted",
+          life: 3000,
         });
+      } else {
+        console.error(data);
+        throw new Error("Failed to Delete Event!");
       }
     } catch (error) {
-      console.error("Error in deleteCourse:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to Delete Event!",
+        life: 3000,
+      });
     } finally {
       loadingDelete.value = false;
     }
-  };
-
-  onMounted(async () => {
-    await getDetail();
-    await initEditor();
-  });
+  }
 </script>
 
 <template>
@@ -334,45 +375,46 @@
     <Skeleton class="mt-8 mb-6" width="10rem" height="2rem"></Skeleton>
     <SkeletonCard />
   </div>
-
   <template v-else>
     <div class="card mb-2">
-      <p class="font-semibold text-2xl mb-8">Course Detail</p>
+      <div class="font-semibold text-2xl mb-8">Event Detail</div>
       <div class="flex flex-col gap-4 w-full">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="title"
           label="Title"
-          :values="courseData.title"
-          disabled
+          :values="eventData.title"
+          :disabled="disabled"
         />
+        <div class="flex flex-col">
+          <div class="mb-2">Image</div>
+          <img
+            :src="eventData.imageUrl"
+            :alt="eventData.title"
+            class="w-full max-w-md rounded-lg shadow-lg mb-4"
+          />
+        </div>
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
-          :values="courseData.description"
-          disabled
-          rows="5"
+          :values="eventData.description"
+          rows="8"
+          :disabled="disabled"
         />
-        <div class="flex flex-col gap-4 w-full">
-          <div class="flex flex-col">
-            <div class="mb-2">Image</div>
-            <img :src="values.imageUrl" alt="Image Preview" class="w-full" />
-          </div>
-          <FieldText
-            className="flex flex-col flex-wrap gap-2 w-full"
-            name="videoUrl"
-            label="Video URL"
-            :values="courseData.videoUrl"
-            disabled
-          />
-        </div>
+        <FieldText
+          className="flex flex-col flex-wrap gap-2 w-full"
+          name="author"
+          label="Author"
+          :values="`${eventData.author.name} (${eventData.author.role})`"
+          :disabled="disabled"
+        />
         <div class="grid grid-cols-12 gap-4">
           <div class="flex flex-col col-span-6 gap-2">
             <label for="courseLevel">Level</label>
             <Select
               id="courseLevel"
-              v-model="courseData.level"
+              v-model="eventData.level"
               display="chip"
               :options="courseLevel"
               optionLabel="label"
@@ -387,7 +429,7 @@
             <label for="courseType">Type</label>
             <SelectButton
               id="courseType"
-              v-model="courseData.type"
+              v-model="eventData.type"
               :options="courseType"
               optionLabel="label"
               optionValue="value"
@@ -403,7 +445,7 @@
             <label for="startDate">Start Date</label>
             <Calendar
               id="startDate"
-              v-model="courseData.startDate"
+              v-model="eventData.startDate"
               dateFormat="dd/mm/yy"
               placeholder="Select Start Date"
               class="w-full"
@@ -415,7 +457,7 @@
             <label for="endDate">End Date</label>
             <Calendar
               id="endDate"
-              v-model="courseData.endDate"
+              v-model="eventData.endDate"
               dateFormat="dd/mm/yy"
               placeholder="Select End Date"
               class="w-full"
@@ -427,95 +469,45 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-12 gap-2">
-      <div class="col-span-8 card m-0">
-        <p class="font-semibold text-2xl mb-8">About Course</p>
-        <div class="editor-container">
-          <div id="editorjs" class="editor-wrapper"></div>
+    <div class="card surface-ground mt-4">
+      <div class="flex flex-col">
+        <div class="mb-2">
+          <p class="font-semibold text-2xl mb-8">About Event</p>
         </div>
-      </div>
-      <div class="col-span-4 card h-full">
-        <p class="font-semibold text-2xl mb-8">Content Covered</p>
-        <Accordion :multiple="true">
-          <AccordionTab v-for="(level, lIdx) in contentCovered" :key="lIdx">
-            <template #header>
-              <div class="flex items-center justify-between w-full">
-                <div class="flex items-center gap-4">
-                  <span>
-                    Level {{ level.level }}: {{ level?.courses?.title }}
-                  </span>
-                </div>
-                <div class="flex items-center gap-2 p-1">
-                  <Chip
-                    v-if="level.type == 'PARENT'"
-                    label="Current Course"
-                    class="p-chip-success mr-3"
-                  />
-                </div>
-              </div>
-            </template>
-
-            <!-- If the level is linked to a course -->
-            <template v-if="level.type == 'CHILDREN'">
-              <CardCourse :item="level.courses" />
-            </template>
-
-            <template v-else>
-              <div
-                v-for="(subContent, sIdx) in level.subContents"
-                :key="sIdx"
-                class="mb-4"
-              >
-                <Panel
-                  :header="subContent.number + '. ' + subContent.title"
-                  toggleable
-                >
-                  <p class="text-gray-600 mb-4">{{ subContent.description }}</p>
-                  <ul class="pl-4">
-                    <li
-                      v-for="(course, courseIdx) in subContent.subCourses"
-                      :key="courseIdx"
-                      class="flex items-center gap-2 mb-2"
-                    >
-                      <div class="flex-1">
-                        <div class="font-medium">{{ course.title }}</div>
-                        <div class="text-sm text-gray-600">
-                          {{ course.description }}
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
-                </Panel>
-              </div>
-            </template>
-          </AccordionTab>
-        </Accordion>
+        <div id="editorjs" class="editor-wrapper"></div>
+        <small v-if="contentError" class="text-red-500">{{
+          contentError
+        }}</small>
       </div>
     </div>
+
     <div class="card surface-ground py-5 mt-4">
-      <div class="flex justify-start gap-3 px-4">
-        <Button
-          label="Back to List"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          outlined
-          @click="onBack"
-        />
-        <Button
-          label="Edit Course"
-          icon="pi pi-pencil"
-          severity="primary"
-          class="dark:text-white"
-          @click="onEdit"
-        />
-        <Button
-          :loading="loadingDelete"
-          label="Delete Course"
-          icon="pi pi-trash"
-          severity="danger"
-          class="dark:text-white"
-          @click="onDelete"
-        />
+      <div class="flex px-4">
+        <div class="flex gap-3">
+          <Button
+            label="Back to List"
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            class="w-[130px]"
+            outlined
+            @click="onCancel"
+          />
+          <Button
+            label="Edit Event"
+            icon="pi pi-pencil"
+            severity="primary"
+            class="dark:text-white"
+            @click="onEdit"
+          />
+          <Button
+            :loading="loadingDelete"
+            label="Delete Event"
+            icon="pi pi-trash"
+            severity="danger"
+            class="dark:text-white"
+            @click="onDelete"
+          />
+        </div>
       </div>
     </div>
   </template>
@@ -540,10 +532,6 @@
     .editor-wrapper {
       padding: 0.5rem;
     }
-  }
-
-  :deep(.p-accordion-header-link) {
-    cursor: pointer !important;
   }
 
   /* Dark mode overrides for link tool */

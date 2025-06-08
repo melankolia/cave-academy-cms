@@ -1,16 +1,24 @@
 <script setup>
   import SkeletonCard from "@/components/Skeleton/Card.vue";
-  import { DASHBOARD, NEWS } from "@/router/constants";
-  import NewsService from "@/service/NewsService";
+  import UploadImage from "@/components/Upload.vue";
+  import { DASHBOARD, EVENT } from "@/router/constants";
+  import EventService from "@/service/EventService";
+  import FileUploadService from "@/service/FileUploadService";
+  import { LINK_PREVIEW } from "@/service/Instance/constants";
+
   import { toTypedSchema } from "@vee-validate/zod";
   import { useToast } from "primevue/usetoast";
   import { useField, useForm } from "vee-validate";
-  import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+  import {
+    computed,
+    onBeforeUnmount,
+    onMounted,
+    reactive,
+    ref,
+    watch,
+  } from "vue";
   import { useRoute, useRouter } from "vue-router";
   import * as zod from "zod";
-  import { useConfirm } from "primevue/useconfirm";
-  import FileUploadService from "@/service/FileUploadService";
-  import { LINK_PREVIEW } from "@/service/Instance/constants";
 
   // Editor.js and plugins
   import EditorJS from "@editorjs/editorjs";
@@ -26,40 +34,41 @@
   import Embed from "@editorjs/embed";
   import Quote from "@editorjs/quote";
 
-  const newsData = ref({
+  const eventData = ref({
     title: "",
     content: "",
     imageUrl: "",
     description: "",
-    author: {
-      id: null,
-      name: "",
-      username: "",
-      role: "",
-    },
+    level: "",
+    type: "",
+    startDate: null,
+    endDate: null,
   });
+
+  const courseType = ref([
+    { label: "Offline", value: "offline" },
+    { label: "Online", value: "online" },
+  ]);
+
+  const courseLevel = ref([
+    { label: "Beginner", value: "beginner" },
+    { label: "Intermediate", value: "intermediate" },
+    { label: "Expert", value: "expert" },
+  ]);
 
   const toast = useToast();
   const router = useRouter();
   const route = useRoute();
-  const newsService = reactive(new NewsService());
+  const eventService = reactive(new EventService());
   const fileUploadService = reactive(new FileUploadService());
 
+  const loadingSubmit = ref(false);
   const loading = ref(false);
   const editorInstance = ref(null);
-  const disabled = ref(true);
-  const loadingDelete = ref(false);
-  const confirm = useConfirm();
 
   const validationSchema = toTypedSchema(
     zod.object({
       title: zod.string().min(1, { message: "Title is Required" }),
-      author: zod.object({
-        id: zod.number(),
-        name: zod.string(),
-        username: zod.string(),
-        role: zod.string(),
-      }),
       content: zod
         .string({
           required_error: "Content is Required",
@@ -83,13 +92,45 @@
           },
           { message: "Please add some content to the editor" }
         ),
-      // imageUrl: zod.string().min(1, { message: "Image is Required" }),
+      imageUrl: zod
+        .string()
+        .min(1, { message: "Image URL is Required" })
+        .url({ message: "Must be a valid URL" }),
+      level: zod.string().min(1, { message: "Level is Required" }),
       description: zod.string().min(1, { message: "Description is Required" }),
+      type: zod
+        .union([
+          zod.string().min(1, { message: "Type is Required" }),
+          zod.null(),
+        ])
+        .refine((val) => val !== null, {
+          message: "Type is Required",
+        }),
+      startDate: zod
+        .date({
+          required_error: "Start Date is Required",
+          invalid_type_error: "Start Date must be a date",
+        })
+        .nullable(),
+      endDate: zod
+        .date({
+          required_error: "End Date is Required",
+          invalid_type_error: "End Date must be a date",
+        })
+        .nullable(),
     })
   );
 
   const { handleSubmit, errors } = useForm({
     validationSchema,
+    initialValues: {
+      title: eventData.value.title,
+      description: eventData.value.description,
+      level: eventData.value.level,
+      type: eventData.value.type,
+      startDate: null,
+      endDate: null,
+    },
   });
 
   const {
@@ -107,11 +148,37 @@
     errorMessage: errorImage,
   } = useField("imageUrl");
 
+  const {
+    value: level,
+    errorMessage: levelError,
+    setValue: setLevel,
+  } = useField("level");
+  const {
+    value: type,
+    errorMessage: typeError,
+    setValue: setType,
+  } = useField("type");
+  const {
+    value: startDate,
+    errorMessage: startDateError,
+    setValue: setStartDate,
+  } = useField("startDate");
+
+  const {
+    value: endDate,
+    errorMessage: endDateError,
+    setValue: setEndDate,
+  } = useField("endDate");
+
   const breadcrumbHome = ref({ icon: "pi pi-home", route: DASHBOARD.LIST });
 
+  const isUpdate = computed(() => {
+    return route.params?.secureId;
+  });
+
   const breadcrumbItems = ref([
-    { label: "News List", route: NEWS.LIST },
-    { label: "News Detail" },
+    { label: "Event List", route: EVENT.LIST },
+    { label: "Event " + (isUpdate.value ? "Update" : "Create") },
   ]);
 
   // Editor Setup
@@ -119,8 +186,8 @@
     editorInstance.value = new EditorJS({
       holder: "editorjs",
       placeholder: "Let's write an awesome story!",
-      readOnly: disabled.value,
-      autofocus: !disabled.value,
+      readOnly: false,
+      autofocus: true,
       tools: {
         header: {
           class: Header,
@@ -198,9 +265,8 @@
         embed: Embed,
         quote: Quote,
       },
-      data: newsData.value.content ? JSON.parse(newsData.value.content) : {},
+      data: eventData.value.content ? JSON.parse(eventData.value.content) : {},
       onChange: async () => {
-        if (disabled.value) return;
         try {
           const outputData = await editorInstance.value.save();
           const jsonString = JSON.stringify(outputData);
@@ -214,7 +280,8 @@
   };
 
   onMounted(async () => {
-    await getDetail();
+    if (isUpdate.value) await getDetail();
+
     await initEditor();
   });
 
@@ -223,11 +290,16 @@
       loading.value = true;
       const id = route.params?.secureId;
 
-      const { data } = await newsService.details(id);
+      const { data } = await eventService.details(id);
       if (data.status === "success") {
         const result = data.data;
         setImageUrl(result.imageUrl);
-        newsData.value = result;
+        setLevel(result.level);
+        setType(result.isOnline ? "online" : "offline");
+        setStartDate(result.startDate ? new Date(result.startDate) : null);
+        setEndDate(result.endDate ? new Date(result.endDate) : null);
+
+        eventData.value = result;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -250,116 +322,123 @@
     }
   });
 
-  const onUpload = async (event) => {
-    if (event?.xhr?.status == 200) {
-      try {
-        const { result } = await JSON.parse(event.xhr.response);
-        newsData.value.imageUrl = result.imageUrl;
-        setImageUrl(result.imageUrl);
+  // Add new watcher for startDate
+  watch(startDate, (newStartDate) => {
+    // If endDate is before the new startDate, reset endDate
+    if (endDate.value && newStartDate && endDate.value < newStartDate) {
+      endDate.value = null;
+    }
+  });
 
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "File Uploaded",
-          life: 3000,
-        });
-      } catch (error) {
+  const onUpload = async (event) => {
+    const file = event[0];
+    const formData = new FormData();
+    formData.append("image", file);
+
+    await fileUploadService
+      .upload(formData)
+      .then(({ data }) => {
+        if (data.success === 1) {
+          toast.add({
+            severity: "success",
+            summary: "Success Data",
+            detail: "Image uploaded successfully!",
+            life: 3000,
+          });
+
+          setImageUrl(data.file.url);
+        } else {
+          toast.add({
+            severity: "error",
+            summary: "Error Data",
+            detail: "Failed to upload image!",
+            life: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Error in uploadByFile:", error);
         toast.add({
           severity: "error",
-          summary: "Upload Failed",
-          detail: "Image Upload Failed",
+          summary: "Error Data",
+          detail: "Failed to upload image!",
           life: 3000,
         });
-      }
-    }
+      });
   };
 
-  const handleImageError = () => {
-    toast.add({
-      severity: "error",
-      summary: "Upload Failed",
-      detail: "Image Upload Failed",
-      life: 3000,
-    });
-  };
-
-  const handleImageRemove = () => {
-    newsData.value.imageUrl = null;
+  const onCancelImage = () => {
     setImageUrl(null);
   };
 
   const onCancel = () => {
     router.replace({
-      name: NEWS.LIST,
+      name: EVENT.LIST,
     });
   };
 
-  const onEdit = () => {
-    router.push({
-      name: NEWS.UPDATE,
-      params: {
-        secureId: route.params.secureId,
-      },
-    });
-  };
-
-  const onDelete = () => {
-    confirm.require({
-      message: `Are you sure you want to delete ${newsData.value.title}?`,
-      header: "Delete Confirmation",
-      icon: "pi pi-exclamation-triangle",
-      rejectProps: {
-        label: "Cancel",
-        severity: "secondary",
-        outlined: true,
-      },
-      acceptProps: {
-        label: "Delete",
-        severity: "danger",
-      },
-      accept: () => {
-        deleteNews();
-      },
-    });
-  };
-
-  async function deleteNews() {
+  const saveData = handleSubmit(async (values) => {
     try {
-      loadingDelete.value = true;
-      const { data } = await newsService.delete(route.params?.secureId);
+      loadingSubmit.value = true;
 
-      if (data.status === "success") {
-        router.replace({
-          name: NEWS.LIST,
-        });
+      // Get the editor content
+      let editorContent = "";
+      if (editorInstance.value) {
+        const outputData = await editorInstance.value.save();
+        editorContent = JSON.stringify(outputData);
+      }
 
+      const payload = {
+        title: values?.title,
+        content: editorContent || values?.content,
+        description: values?.description,
+        imageUrl: "https://picsum.photos/800/600",
+        level: values?.level,
+        isOnline: values?.type?.toLowerCase() === "online",
+        startDate: values?.startDate,
+        endDate: values?.endDate,
+      };
+
+      let type = "create";
+      if (isUpdate.value) type = "update";
+
+      const id = eventData.value?.id;
+
+      const {
+        data: { data, status },
+      } = await eventService[type](payload, id);
+
+      if (status === "success") {
         toast.add({
           severity: "success",
           summary: "Successful",
-          detail: "News Deleted",
+          detail: `Event ${isUpdate.value ? "Updated" : "Created"}`,
           life: 3000,
         });
+        router.replace({
+          name: EVENT.DETAIL,
+          params: {
+            secureId: data.id,
+          },
+        });
       } else {
-        console.error(data);
-        throw new Error("Failed to Delete News!");
+        throw new Error(`Event ${isUpdate.value ? "Update" : "Create"} Failed`);
       }
     } catch (error) {
       toast.add({
         severity: "error",
-        summary: "Error Data",
-        detail: "Failed to Delete News!",
+        summary: "Failed",
+        detail: error.message,
         life: 3000,
       });
     } finally {
-      loadingDelete.value = false;
+      loadingSubmit.value = false;
     }
-  }
+  });
 </script>
 
 <template>
   <div class="card">
-    <ConfirmDialog />
-
     <Toolbar>
       <template #start>
         <Breadcrumb
@@ -401,46 +480,114 @@
   </div>
   <template v-else>
     <div class="card mb-2">
-      <div class="font-semibold text-2xl mb-8">News Detail</div>
+      <div class="font-semibold text-2xl mb-8">
+        {{ isUpdate ? "Update" : "Create" }} Event
+      </div>
       <div class="flex flex-col gap-4 w-full">
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="title"
           label="Title"
-          :values="newsData.title"
-          :disabled="disabled"
+          :values="eventData.title"
         />
         <div class="flex flex-col">
           <div class="mb-2">Image</div>
-          <img
-            :src="newsData.imageUrl"
-            :alt="newsData.title"
-            class="w-full max-w-md rounded-lg shadow-lg mb-4"
+          <UploadImage
+            :multiple="false"
+            :uploadFn="onUpload"
+            @cancelImage="onCancelImage"
           />
+          <small v-if="!metaImage.valid" class="text-red-500">{{
+            errorImage
+          }}</small>
+        </div>
+        <div v-if="imageUrl" class="flex flex-col">
+          <div class="mb-2">Image Preview</div>
+          <img :src="imageUrl" alt="Image Preview" class="w-full" />
         </div>
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
-          :values="newsData.description"
+          :values="eventData.description"
           rows="8"
-          :disabled="disabled"
         />
-        <FieldText
-          className="flex flex-col flex-wrap gap-2 w-full"
-          name="author"
-          label="Author"
-          :values="`${newsData.author.name} (${newsData.author.role})`"
-          :disabled="disabled"
-        />
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseLevel">Level</label>
+            <Select
+              id="courseLevel"
+              v-model="level"
+              display="chip"
+              :options="courseLevel"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Level"
+              class="w-full"
+            />
+            <small v-if="errors.level" class="text-red-500">{{
+              errors.level
+            }}</small>
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="courseType">Type</label>
+            <SelectButton
+              id="courseType"
+              v-model="type"
+              :options="courseType"
+              optionLabel="label"
+              optionValue="value"
+              filter
+              placeholder="Select Course Type"
+              class="w-full"
+            />
+            <small v-if="errors.type" class="text-red-500">{{
+              errors.type
+            }}</small>
+          </div>
+        </div>
+        <div class="grid grid-cols-12 gap-4">
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="startDate">Start Date</label>
+            <Calendar
+              id="startDate"
+              v-model="startDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select Start Date"
+              class="w-full"
+              :showIcon="true"
+              :minDate="new Date()"
+              :manualInput="false"
+            />
+            <small v-if="errors.startDate" class="text-red-500">{{
+              errors.startDate
+            }}</small>
+          </div>
+          <div class="flex flex-col col-span-6 gap-2">
+            <label for="endDate">End Date</label>
+            <Calendar
+              id="endDate"
+              v-model="endDate"
+              dateFormat="dd/mm/yy"
+              placeholder="Select End Date"
+              class="w-full"
+              :showIcon="true"
+              :minDate="startDate || new Date()"
+              :disabled="!startDate"
+              :manualInput="false"
+            />
+            <small v-if="errors.endDate" class="text-red-500">{{
+              errors.endDate
+            }}</small>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card surface-ground mt-4">
+    <div class="card surface-ground py-5 mt-4">
       <div class="flex flex-col">
-        <div class="mb-2">
-          <p class="font-semibold text-2xl mb-8">About News</p>
-        </div>
+        <div class="mb-2">Content</div>
         <div id="editorjs" class="editor-wrapper"></div>
         <small v-if="contentError" class="text-red-500">{{
           contentError
@@ -449,30 +596,23 @@
     </div>
 
     <div class="card surface-ground py-5 mt-4">
-      <div class="flex px-4">
+      <div class="flex justify-end px-4">
         <div class="flex gap-3">
           <Button
-            label="Back to List"
-            icon="pi pi-arrow-left"
+            label="Cancel"
+            icon="pi pi-times"
             severity="secondary"
             class="w-[130px]"
             outlined
             @click="onCancel"
           />
           <Button
-            label="Edit News"
-            icon="pi pi-pencil"
+            label="Save Event"
+            icon="pi pi-check"
             severity="primary"
-            class="dark:text-white"
-            @click="onEdit"
-          />
-          <Button
-            :loading="loadingDelete"
-            label="Delete News"
-            icon="pi pi-trash"
-            severity="danger"
-            class="dark:text-white"
-            @click="onDelete"
+            class="w-[130px]"
+            @click="saveData"
+            :loading="loadingSubmit"
           />
         </div>
       </div>

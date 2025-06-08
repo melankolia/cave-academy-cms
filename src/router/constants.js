@@ -21,6 +21,13 @@ export const SALES_MANAGEMENT = {
   DETAIL: "sales_management.detail",
 };
 
+export const STUDENT_MANAGEMENT = {
+  LIST: "student.list",
+  CREATE: "student.create",
+  UPDATE: "student.update",
+  DETAIL: "student.detail",
+};
+
 export const PRODUCT = {
   LIST: "product.list",
   CREATE: "product.create",
@@ -50,6 +57,20 @@ export const COURSE = {
   CREATE: "course.create",
   UPDATE: "course.update",
   DETAIL: "course.detail",
+};
+
+export const EVENT = {
+  LIST: "event.list",
+  CREATE: "event.create",
+  UPDATE: "event.update",
+  DETAIL: "event.detail",
+};
+
+export const WIKI = {
+  LIST: "wiki.list",
+  CREATE: "wiki.create",
+  UPDATE: "wiki.update",
+  DETAIL: "wiki.detail",
 };
 
 export const LOGIN = "login";
