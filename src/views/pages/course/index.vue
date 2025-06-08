@@ -31,18 +31,15 @@
     try {
       loading.value = true;
       const {
-        data: {
-          data: { courses },
-          message,
-        },
+        data: { data, status },
       } = await courseService.list({
         page: options.value.currentPage,
         limit: options.value.rowsPage,
       });
 
-      if (message == "OK") {
-        courseData.value = [...courses];
-        totalRecords.value = courses.length;
+      if (status == "success") {
+        courseData.value = [...data];
+        totalRecords.value = data.length;
       } else {
         throw new Error("Failed to fetch data!");
       }
@@ -73,7 +70,7 @@
     router.push({
       name: COURSE.UPDATE,
       params: {
-        secureId: item.secureId,
+        secureId: item.id,
       },
     });
   };
@@ -82,7 +79,7 @@
     router.push({
       name: COURSE.DETAIL,
       params: {
-        secureId: item.secureId,
+        secureId: item.id,
       },
     });
   };
@@ -92,14 +89,12 @@
     try {
       loadingDelete.value = true;
       const {
-        data: { result, message },
-      } = await courseService.delete(course.value?.secureId);
+        data: { data, status },
+      } = await courseService.delete(course.value?.id);
 
-      if (message == "OK") {
+      if (status == "success") {
         courseData.value = [
-          ...courseData.value.filter(
-            (val) => val.secureId !== course.value?.secureId
-          ),
+          ...courseData.value.filter((val) => val.id !== course.value?.id),
         ];
         course.value = {};
         deleteCourseDialog.value = false;
@@ -110,7 +105,7 @@
           life: 3000,
         });
       } else {
-        console.error(result);
+        console.error(data);
         throw new Error("Failed to Delete Course!");
       }
     } catch (error) {
@@ -137,14 +132,6 @@
     },
     { deep: true }
   );
-
-  watch(
-    () => course.value,
-    (val) => {
-      console.log("Course Data", val);
-    },
-    { deep: true }
-  );
 </script>
 
 <template>
@@ -165,7 +152,7 @@
       <DataTable
         :loading="loading"
         :value="courseData"
-        dataKey="secureId"
+        dataKey="id"
         :filters="filters"
       >
         <template #header>

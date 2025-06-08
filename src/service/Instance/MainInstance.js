@@ -6,22 +6,16 @@ import axios from "axios";
 class Instance {
   constructor(baseURL, timeout = null) {
     this.instance = axios.create({
-      baseURL: import.meta.env.VITE_BASE_URL,
+      baseURL: "",
       timeout,
+      withCredentials: true,
     });
     this.instance.CancelToken = axios.CancelToken;
     this.instance.isCancel = axios.isCancel;
-    this.instance.interceptors.request.use(this.reqInterceptors);
     this.instance.interceptors.response.use(
       (response) => response,
       this.resInterceptors.bind(this)
     );
-  }
-
-  reqInterceptors(config) {
-    const authStore = useAuthStore();
-    config.headers.Authorization = `Bearer ${authStore.token}`;
-    return config;
   }
 
   resInterceptors(error) {

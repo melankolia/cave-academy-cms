@@ -12,17 +12,29 @@
       <Column header="Image">
         <template #body="slotProps">
           <img
-            :src="slotProps.data.image"
-            :alt="slotProps.data.image"
+            :src="slotProps.data.imageUrl"
+            :alt="slotProps.data.imageUrl"
             class="w-24 rounded"
           />
         </template>
       </Column>
-      <Column field="title" header="Title"></Column>
-      <Column field="description" header="Description"></Column>
+      <Column field="title" header="Title">
+        <template #body="slotProps">
+          <span class="line-clamp-2">{{ slotProps.data.title }}</span>
+        </template>
+      </Column>
+      <Column field="description" header="Description">
+        <template #body="slotProps">
+          <span class="line-clamp-2 max-w-[400px]">{{
+            slotProps.data.description
+          }}</span>
+        </template>
+      </Column>
       <Column header="Date">
         <template #body="slotProps">
-          {{ formatDateRange(slotProps.data.date) }}
+          {{
+            formatDateRange(slotProps.data.startDate, slotProps.data.endDate)
+          }}
         </template>
       </Column>
     </DataTable>
@@ -39,23 +51,23 @@
     },
   });
 
-  const formatDateRange = (dateRange) => {
-    if (!dateRange) return "-";
-    const startDate = dateRange[0]
-      ? new Date(dateRange[0]).toLocaleDateString("id-ID", {
+  const formatDateRange = (startDate, endDate) => {
+    if (!startDate || !endDate) return "-";
+    const startDateFormatted = startDate
+      ? new Date(startDate).toLocaleDateString("id-ID", {
           year: "numeric",
           month: "long",
           day: "numeric",
         })
       : "-";
-    const endDate = dateRange[1]
-      ? new Date(dateRange[1]).toLocaleDateString("id-ID", {
+    const endDateFormatted = endDate
+      ? new Date(endDate).toLocaleDateString("id-ID", {
           year: "numeric",
           month: "long",
           day: "numeric",
         })
       : "-";
-    return `${startDate} - ${endDate}`;
+    return `${startDateFormatted} - ${endDateFormatted}`;
   };
 
   const selectedCourse = ref(null);
@@ -87,7 +99,9 @@
   watch(
     () => coveredCourses.value,
     (newCourses) => {
-      const selectedCourses = courses.value[newCourses];
+      const selectedCourses = courses.value.find(
+        (course) => course.id === newCourses
+      );
 
       emit("selectedCourses", selectedCourses);
     },
