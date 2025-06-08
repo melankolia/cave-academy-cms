@@ -52,7 +52,7 @@
     router.push({
       name: COURSE.DETAIL,
       params: {
-        secureId: item.secureId,
+        secureId: item.courseId,
       },
     });
   };

@@ -8,6 +8,7 @@
       @row-click="handleRowClick"
       dataKey="id"
       :rowClass="getRowClass"
+      :loading="loadingCourse"
     >
       <Column header="Image">
         <template #body="slotProps">
@@ -37,12 +38,16 @@
           }}
         </template>
       </Column>
+      <template #empty> No Course found. </template>
+      <template #loading> Loading Course data. Please wait. </template>
     </DataTable>
   </div>
 </template>
 
 <script setup>
   import { ref, watch, onMounted } from "vue";
+
+  const loadingCourse = ref(false);
 
   const props = defineProps({
     fnMounted: {
@@ -90,10 +95,25 @@
 
   const emit = defineEmits(["selectedCourses"]);
 
-  onMounted(() => {
-    props.fnMounted((items) => {
-      courses.value = [...items];
-    });
+  onMounted(async () => {
+    try {
+      loadingCourse.value = true;
+      await props.fnMounted((items) => {
+        courses.value = [...items];
+      });
+
+      console.log(courses.value);
+    } catch (error) {
+      console.log(error);
+      toast.add({
+        severity: "error",
+        summary: "Error Data",
+        detail: "Failed to fetch data!",
+        life: 3000,
+      });
+    } finally {
+      loadingCourse.value = false;
+    }
   });
 
   watch(

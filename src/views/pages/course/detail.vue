@@ -344,14 +344,14 @@
           name="title"
           label="Title"
           :values="courseData.title"
-          disabled
+          readOnly
         />
         <FieldTextArea
           className="flex flex-col flex-wrap gap-2 w-full"
           name="description"
           label="Description"
           :values="courseData.description"
-          disabled
+          readOnly
           rows="5"
         />
         <div class="flex flex-col gap-4 w-full">
@@ -364,7 +364,7 @@
             name="videoUrl"
             label="Video URL"
             :values="courseData.videoUrl"
-            disabled
+            readOnly
           />
         </div>
         <div class="grid grid-cols-12 gap-4">

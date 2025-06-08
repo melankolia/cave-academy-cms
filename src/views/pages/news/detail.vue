@@ -408,7 +408,7 @@
           name="title"
           label="Title"
           :values="newsData.title"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
         <div class="flex flex-col">
           <div class="mb-2">Image</div>
@@ -424,14 +424,14 @@
           label="Description"
           :values="newsData.description"
           rows="8"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
         <FieldText
           className="flex flex-col flex-wrap gap-2 w-full"
           name="author"
           label="Author"
           :values="`${newsData.author.name} (${newsData.author.role})`"
-          :disabled="disabled"
+          :readOnly="disabled"
         />
       </div>
     </div>
